@@ -1,0 +1,7 @@
+//Hunt For Emails which aren't zapped or purged and have same ClusterID with those got quarantined at first place
+EmailEvents
+| join kind=anti ( EmailPostDeliveryEvents
+        | where Action in ('Moved to quarantine','Soft delete')
+        ) on NetworkMessageId
+| summarize make_set( DeliveryLocation), make_set(EmailActionPolicy), make_set(ConfidenceLevel) by EmailClusterId, SenderFromAddress
+| where (set_DeliveryLocation has "Quarantine" and set_DeliveryLocation has_any ("Junk folder","Inbox/folder"))
