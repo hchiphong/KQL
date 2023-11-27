@@ -1,0 +1,9 @@
+Base on microsoft document [SignInLogs Schema](https://learn.microsoft.com/en-us/azure/azure-monitor/reference/tables/signinlogs) `CorrelationId: The identifier that's sent from the client when sign-in is initiated. This is used for troubleshooting the corresponding sign-in activity when calling for support.`
+
+It is suspicious when multiple user sign in attempt from single correlationID
+
+```
+union SigninLogs, AADNonInteractiveUserSignInLogs
+| summarize make_set(UserId), make_set( UserDisplayName), make_set( AppDisplayName), make_set(IPAddress) by CorrelationId
+| where array_length( set_UserId) >1
+```
