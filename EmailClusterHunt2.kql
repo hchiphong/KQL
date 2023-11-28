@@ -1,7 +1,7 @@
 //Hunt For Emails (junk,inbox) have same ClusterID with emails got zapped
 | summarize make_set( DeliveryLocation), make_set(EmailActionPolicy), make_set(ConfidenceLevel) by EmailClusterId, SenderFromAddress
 let SeedEmail= EmailPostDeliveryEvents
-| where Action == 'Moved to quarantine'
+| where Action in( 'Moved to quarantine','Soft delete')
 | join EmailEvents on NetworkMessageId;
 EmailEvents
 | where EmailClusterId in (( SeedEmail | distinct EmailClusterId)) and NetworkMessageId !in (( SeedEmail | distinct  NetworkMessageId)) // Get Emails have same ClusterID with emails got zapped
