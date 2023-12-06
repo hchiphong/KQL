@@ -1,0 +1,10 @@
+// This query for auditing emails reported by user which was not handled.
+CloudAppEvents
+| where TimeGenerated >ago(15d)
+| where ActionType in('UserSubmission','SubmissionAdminReview')
+| extend  SubmissionId = tostring ( RawEventData.SubmissionId),
+NetworkMessageId = tostring(RawEventData.ObjectId),
+Subject = tostring(RawEventData.Subject)
+| summarize Actions=make_list (ActionType) by SubmissionId, NetworkMessageId,Subject, TenantId
+| where not( Actions has 'SubmissionAdminReview')
+| project  SubmissionId, NetworkMessageId,Subject,TenantId
