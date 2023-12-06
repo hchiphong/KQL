@@ -1,0 +1,20 @@
+// This query is for getting email submissionId from a networkmessageID. This can use for getting email submissionID in email report incident and automate "Mark and notify" in Defender
+// Use AlertEvidence Table
+let NetworkMessageId_List = dynamic(
+    ['xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx']
+);
+AlertEvidence
+| where NetworkMessageId in ( NetworkMessageId_List)
+| parse AdditionalFields.SourceExtendedProperties with * "SubmissionId:" SubmissionId ";" *
+| where isnotempty(SubmissionId)
+| distinct  NetworkMessageId, SubmissionId
+
+// Use CloudAppEvents Table
+let NetworkMessageId_List = dynamic(
+    ['xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx']
+);
+CloudAppEvents
+| where ActionType == 'UserSubmission'
+| extend  SubmissionId = tostring ( RawEventData.SubmissionId),
+            NetworkMessageId = tostring ( RawEventData.ObjectId)
+| where NetworkMessageId in ( NetworkMessageId_List)
