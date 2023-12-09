@@ -14,8 +14,8 @@ What is the role of our victim in the organization?
 <h3>Solution</h3> 
 
 ```
-Email
-| where link == 'http://madelvesnorthpole.org/published/search/MonthlyInvoiceForReindeerFood.docx'
+Employees
+|   where email_addr == 'alabaster_snowball@santaworkshopgeeseislands.org'
 ```
 
 **Result**
