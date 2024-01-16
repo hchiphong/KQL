@@ -9,5 +9,3 @@ EmailPostDeliveryEvents
 | summarize arg_max( TimeGenerated,*), Action_Result=make_set( strcat(ActionType,'-',ActionResult)) by NetworkMessageId
 | where Action_Result !has "Manual Remediation-Success"
 | project-keep  TimeGenerated, NetworkMessageId, Action*, RecipientEmailAddress
-| distinct ActionResult
-| where NetworkMessageId == '3bb362f4-704f-4d3d-0538-08dc16c95137'
