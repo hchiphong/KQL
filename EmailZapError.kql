@@ -1,0 +1,16 @@
+// This query return ZAP-failed email which hasn't been purge
+
+let ErrorEmail=EmailPostDeliveryEvents
+| where ActionResult =='Error'
+| where ActionType has 'ZAP'
+;
+EmailPostDeliveryEvents
+| where NetworkMessageId in (( ErrorEmail | distinct  NetworkMessageId))
+| summarize arg_max( TimeGenerated,*), Action_Result=make_set( strcat(ActionType,'-',ActionResult)) by NetworkMessageId
+| where Action_Result !has "Manual Remediation-Success"
+| project-keep  TimeGenerated, NetworkMessageId, Action*, RecipientEmailAddress
+
+
+| distinct ActionResult
+
+| where NetworkMessageId == '3bb362f4-704f-4d3d-0538-08dc16c95137'
