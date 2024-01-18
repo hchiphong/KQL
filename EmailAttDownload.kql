@@ -1,0 +1,11 @@
+//This query looks for attachment downloaded from email
+
+// Provide list of NetworkMessageID
+let NetID = dynamic(["NetID1","NetID2"])
+;
+let ATTSha256= EmailAttachmentInfo
+| where NetworkMessageId in( NetID)
+| distinct SHA256
+;
+CloudAppEvents
+| where RawEventData.Sha256 in (( ATTSha256))
