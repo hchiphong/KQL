@@ -1,0 +1,31 @@
+// This Hunt look for emails has same cluster as reported phishing email. Can append with other query such as EmailAttDownload for quick hunt.
+
+let ReportedPhishEmailLookBack = 10d;
+let CurrentSearchTimeRange= 3d;
+let ReportedPhishEmails = CloudAppEvents
+// GetPhish Email
+| where TimeGenerated >ago(ReportedPhishEmailLookBack)
+| where ActionType contains "SubmissionAdminReview"
+| extend    NetworkMessageId = tostring ( RawEventData.ObjectId),
+            Result = tostring( RawEventData.ExtendedProperties[4].Value)
+| project TimeGenerated, NetworkMessageId, Result
+// lastest reported email's result
+| summarize arg_max(TimeGenerated,*) by NetworkMessageId
+| where Result == 'Phish'
+;
+// Get Phishing email clusterId from above
+let PhishCluster = EmailEvents
+                    | where NetworkMessageId  in (( ReportedPhishEmails | distinct  NetworkMessageId))
+                    | distinct EmailClusterId
+                    ;
+// Main Query
+EmailEvents
+| where TimeGenerated >ago(CurrentSearchTimeRange)
+| where EmailClusterId  in (( PhishCluster))
+| where DeliveryLocation !in ('Quarantine','Failed','Dropped')
+// Exclude quarantine zap and deleted email
+| join kind=anti ( EmailPostDeliveryEvents
+                    | where (Action == 'Soft delete' and ActionResult == 'Success')
+                            or ( ActionType has 'ZAP' and DeliveryLocation != 'Junk')
+                    ) on NetworkMessageId
+| project TimeGenerated, Subject, SenderDisplayName, SenderFromAddress, SenderMailFromAddress,RecipientEmailAddress,EmailClusterId, DeliveryLocation,LatestDeliveryLocation, NetworkMessageId
