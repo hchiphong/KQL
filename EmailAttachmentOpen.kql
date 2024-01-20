@@ -1,0 +1,8 @@
+// Ref: https://expel.com/blog/aitm-business-email-compromise-attacks-what-to-watch-for/
+
+CloudAppEvents
+// Filter before search such as | where IPAddress == '8.8.8.8'
+| where ActionType == 'Update'
+| extend InternetMessageId=tolower(RawEventData.Item.InternetMessageId), Path= RawEventData.Item.ParentFolder.Path, Attachments= RawEventData.Item.Attachments
+| project  InternetMessageId, Path, Attachments
+// Can join with EmailEvents on InternetMessageId
