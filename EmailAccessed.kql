@@ -1,0 +1,10 @@
+//Query for emails accessed from IP or user ,.....
+
+CloudAppEvents
+// Filter before search such as | where IPAddress == '8.8.8.8'
+| where ActionType == 'MailItemsAccessed'
+| extend  RawEventData.Folders
+| mv-expand RawEventData_Folders
+| mv-expand RawEventData_Folders.FolderItems
+| extend InternetMessageId= tolower(RawEventData_Folders_FolderItems.InternetMessageId)
+// Can join with EmailEvents on InternetMessageId
