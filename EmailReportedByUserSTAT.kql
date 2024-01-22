@@ -1,0 +1,38 @@
+// This email returns reported emails' STAT, base on this idea, we can create alert rule to alert when email is reported by user who has High phishing email report rate.
+// SubmissionType
+//             0: Junk
+//             1: Phish
+//             3: NotJunk
+            
+CloudAppEvents
+| where TimeGenerated between( ago(90d) .. ago(2d))
+| where ActionType == "UserSubmission"
+| extend    SubmissionId = tostring ( RawEventData.SubmissionId),
+            NetworkMessageId = tostring ( RawEventData.ObjectId),
+            UserId = tostring(RawEventData.UserId),
+            SubmissionType= toint(RawEventData.SubmissionType)
+| extend SubmissionType = iff(SubmissionType == 0,'Junk', 
+                                iif( SubmissionType  == 1, 'Phish', 'NotJunk')
+                                )
+|  summarize arg_max( TimeGenerated,*) by SubmissionId,NetworkMessageId,UserId
+| join kind = leftouter (
+            CloudAppEvents
+            | where ActionType contains "SubmissionAdminReview"
+            | extend    SubmissionId = tostring ( RawEventData.SubmissionId),
+                        NetworkMessageId = tostring ( RawEventData.ObjectId),
+                        UserId = tostring(RawEventData.UserId),
+                        Result = tostring( RawEventData.ExtendedProperties[4].Value)
+            |  summarize arg_max( TimeGenerated,*) by SubmissionId,NetworkMessageId,UserId
+            ) on SubmissionId, NetworkMessageId, UserId
+| project  NetworkMessageId, Result, SubmissionId, UserId, SubmissionType
+| extend Result = iif( isempty( Result),'NotMarked',Result)
+| summarize ResultCount_TP=countif( SubmissionType == Result) 
+            ,ResultCount_FP= countif( SubmissionType != Result and Result != 'NotMarked')
+            ,ReportReasonPhish =countif( SubmissionType == 'Phish')
+            ,ReportReasonPhish_TP =countif( SubmissionType == 'Phish' and SubmissionType == Result)
+            ,ReportReasonSpam =countif( SubmissionType == 'Junk')
+            ,ReportReasonNotJunk =countif( SubmissionType == 'NotJunk')
+            ,Notmarked =countif( Result == 'NotMarked')
+            ,TotalEmailReport = count()
+             by UserId
+//| extend ReportReasonPhish_TP_Rate =  round(100.0 *ReportReasonPhish_TP / ReportReasonPhish)
