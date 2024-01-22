@@ -1,4 +1,6 @@
 // This email returns reported emails' STAT, base on this idea, we can create alert rule to alert when email is reported by user who has High phishing email report rate.
+// NOTE: THIS QUERY REQUIRE WORKS IF ORGANIZATION IS USING 'MARK AND NOTIFY' FEATURE (emailThreatSubmission: review) https://learn.microsoft.com/en-us/graph/api/security-emailthreatsubmission-review?view=graph-rest-beta&tabs=http
+
 // SubmissionType
 //             0: Junk
 //             1: Phish
