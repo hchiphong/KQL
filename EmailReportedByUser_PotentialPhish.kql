@@ -1,0 +1,61 @@
+// This query will return list of email reported by who has high TP phishing report rate/
+//NOTE: THIS QUERY REQUIRE WORKS IF ORGANIZATION IS USING 'MARK AND NOTIFY' FEATURE (emailThreatSubmission: review) https://learn.microsoft.com/en-us/graph/api/security-emailthreatsubmission-review?view=graph-rest-beta&tabs=http
+
+//Threadshold
+let TotalEmailReportThreadshold = 5;
+let ReportReasonPhish_TP_Rate_Threadshold = 80; //select between (0 ..100)
+let CheckTime =1d;         
+let stat=CloudAppEvents
+| where TimeGenerated between (ago(90d) .. ago(CheckTime) )
+| where ActionType == "UserSubmission"
+| extend    SubmissionId = tostring ( RawEventData.SubmissionId),
+            NetworkMessageId = tostring ( RawEventData.ObjectId),
+            UserId = tostring(RawEventData.UserId),
+            SubmissionType= toint(RawEventData.SubmissionType)
+| extend SubmissionType = iff(SubmissionType == 0,'Junk', 
+                                iif( SubmissionType  == 1, 'Phish', 'NotJunk')
+                                )
+|  summarize arg_max( TimeGenerated,*) by SubmissionId,NetworkMessageId,UserId
+| join kind = leftouter (
+            CloudAppEvents
+            | where ActionType contains "SubmissionAdminReview"
+            | extend    SubmissionId = tostring ( RawEventData.SubmissionId),
+                        NetworkMessageId = tostring ( RawEventData.ObjectId),
+                        UserId = tostring(RawEventData.UserId),
+                        Result = tostring( RawEventData.ExtendedProperties[4].Value)
+            |  summarize arg_max( TimeGenerated,*) by SubmissionId,NetworkMessageId,UserId
+            ) on SubmissionId, NetworkMessageId, UserId
+| project  NetworkMessageId, Result, SubmissionId, UserId, SubmissionType
+| extend Result = iif( isempty( Result),'NotMarked',Result)
+| summarize ResultCount_TP=countif( SubmissionType == Result) 
+            ,ResultCount_FP= countif( SubmissionType != Result and Result != 'NotMarked')
+            ,ReportReasonPhish =countif( SubmissionType == 'Phish')
+            ,ReportReasonPhish_TP =countif( SubmissionType == 'Phish' and SubmissionType == Result)
+            ,ReportReasonSpam =countif( SubmissionType == 'Junk')
+            ,ReportReasonNotJunk =countif( SubmissionType == 'NotJunk')
+            ,Notmarked =countif( Result == 'NotMarked')
+            ,TotalEmailReport = count()
+             by UserId
+| extend ReportReasonPhish_TP_Rate =  round(100.0 *ReportReasonPhish_TP / ReportReasonPhish)
+| where ReportReasonPhish_TP_Rate >ReportReasonPhish_TP_Rate_Threadshold and TotalEmailReport > TotalEmailReportThreadshold
+;
+CloudAppEvents
+| where TimeGenerated > ago(CheckTime) 
+| where ActionType == "UserSubmission"
+| extend    SubmissionId = tostring ( RawEventData.SubmissionId),
+            NetworkMessageId = tostring ( RawEventData.ObjectId),
+            UserId = tostring(RawEventData.UserId),
+            SubmissionType= toint(RawEventData.SubmissionType)
+| where UserId  in (( stat | distinct UserId))
+| where SubmissionType ==1
+| project  NetworkMessageId, SubmissionId, UserId, SubmissionType
+// remove below comment to filter out admin reviewed emails
+// | join kind = anti (
+//             CloudAppEvents
+//             | where ActionType contains "SubmissionAdminReview"
+//             | extend    SubmissionId = tostring ( RawEventData.SubmissionId),
+//                         NetworkMessageId = tostring ( RawEventData.ObjectId),
+//                         UserId = tostring(RawEventData.UserId),
+//                         Result = tostring( RawEventData.ExtendedProperties[4].Value)
+//             |  summarize arg_max( TimeGenerated,*) by SubmissionId,NetworkMessageId,UserId
+//             ) on SubmissionId, NetworkMessageId, UserId 
