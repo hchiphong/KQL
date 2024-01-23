@@ -1,0 +1,15 @@
+// REF: https://www.bridewell.com/insights/blogs/detail/detecting-abuse-of-sharepoint-online-using-snaffpoint
+// This query for auditing O365 Search query
+
+let keywords = dynamic([
+    "password",
+    "pwd"
+]);
+let excludedKeywords = dynamic([
+     "forgot"
+]);
+CloudAppEvents
+| where TimeGenerated >ago(1d)
+| where ActionType == "SearchQueryPerformed" and RawEventData.UserId != "app@sharepoint"
+| extend SearchQueryStrings = tostring(RawEventData["SearchQueryText"])
+| where SearchQueryStrings has_any (keywords) and not (SearchQueryStrings has_any (excludedKeywords))
