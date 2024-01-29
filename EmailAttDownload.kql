@@ -8,6 +8,7 @@ let ATTSha256= EmailAttachmentInfo
 | distinct SHA256
 ;
 CloudAppEvents
+| where ActionType startswith "FileDownloaded"
 | where RawEventData.Sha256 in (( ATTSha256))
 
 // Hunt by EmailclusterID
@@ -21,4 +22,5 @@ let ATTSha256= EmailAttachmentInfo
 | distinct SHA256
 ;
 CloudAppEvents
+| where ActionType startswith "FileDownloaded"
 | where RawEventData.Sha256 in (( ATTSha256))
