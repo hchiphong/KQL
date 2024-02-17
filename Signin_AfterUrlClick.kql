@@ -1,5 +1,5 @@
 // This query looks for sign in attempt made from first seen IPAddress in 30d after user clicked Url.
-let searchTimeRange= 1d;
+let searchTimeRange= 10d;
 let data =
 union
 ( SigninLogs
@@ -7,6 +7,7 @@ union
 | where UserPrincipalName has "@"
 | extend deviceId = tostring(DeviceDetail.deviceId), displayName = tostring(DeviceDetail.displayName)
 | where isempty(deviceId)
+| where RiskEventTypes !='[]' or RiskEventTypes_V2 !='[]' // Risky sign in only, this can be commented but result more FP
 | project TimeGenerated, Type, AccountUpn= tolower(UserPrincipalName), IPAddress,AppDisplayName,RiskLevel
 )
 ,(
@@ -20,12 +21,12 @@ UrlClickEvents
     | scan with_match_id=id  declare(ClickTime:datetime, LoginTime:datetime,Url:string) with
     (
         step UrlClick output=none: Type=="UrlClickEvents" => ClickTime = TimeGenerated ;
-        step Login : Type=="SigninLogs"  and TimeGenerated - UrlClick.ClickTime between (5s .. 2m ) 
+        step Login : Type=="SigninLogs"  and TimeGenerated - UrlClick.ClickTime between (5s .. 4m ) 
                         and  not( ipv4_is_in_range(IPAddress,format_ipv4_mask(UrlClick.IPAddress,24)))  //subnet of click IP different from signin IP, which can be adjusted
                         => LoginTime= TimeGenerated, ClickTime=UrlClick.ClickTime, Url=UrlClick.Url;
     )
     | project LoginTime, AccountUpn, ClickTime,  LoginIPAddress= IPAddress,AppDisplayName, EventGroupNumber=id,RiskLevel,Url
-    | sort by LoginTime,AccountUpn,EventGroupNumber desc 
+    | sort by LoginTime,AccountUpn,EventGroupNumber desc  // EventGroupNumber means how many grouped series events the user has
 );
 data
 //Exclude previous known signin IP
