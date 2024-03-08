@@ -8,3 +8,13 @@ CloudAppEvents
 | mv-expand RawEventData_Folders.FolderItems
 | extend InternetMessageId= tolower(RawEventData_Folders_FolderItems.InternetMessageId)
 // Can join with EmailEvents on InternetMessageId
+
+
+// With OfficeActivity Table
+OfficeActivity
+| where Operation == "MailItemsAccessed"
+| mv-expand todynamic(Folders)
+| extend FolderItems = Folders.FolderItems
+| mv-expand FolderItems
+| extend InternetMessageId = tolower(tostring(FolderItems.InternetMessageId))
+// Can join with EmailEvents on InternetMessageId
