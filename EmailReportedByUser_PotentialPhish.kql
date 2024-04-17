@@ -18,7 +18,7 @@ let stat=CloudAppEvents
 |  summarize arg_max( TimeGenerated,*) by SubmissionId
 | join kind = leftouter (
             CloudAppEvents
-            | where ActionType contains "SubmissionAdminReview"
+            | where ActionType == "SubmissionAdminReview"
             | extend    SubmissionId = tostring ( RawEventData.SubmissionId),
                         UserId = tostring(RawEventData.UserId),
                         Result = tostring( RawEventData.ExtendedProperties[4].Value)
