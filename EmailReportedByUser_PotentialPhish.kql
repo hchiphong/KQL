@@ -15,16 +15,15 @@ let stat=CloudAppEvents
 | extend SubmissionType = iff(SubmissionType == 0,'Junk', 
                                 iif( SubmissionType  == 1, 'Phish', 'NotJunk')
                                 )
-|  summarize arg_max( TimeGenerated,*) by SubmissionId,NetworkMessageId,UserId
+|  summarize arg_max( TimeGenerated,*) by SubmissionId
 | join kind = leftouter (
             CloudAppEvents
             | where ActionType contains "SubmissionAdminReview"
             | extend    SubmissionId = tostring ( RawEventData.SubmissionId),
-                        NetworkMessageId = tostring ( RawEventData.ObjectId),
                         UserId = tostring(RawEventData.UserId),
                         Result = tostring( RawEventData.ExtendedProperties[4].Value)
-            |  summarize arg_max( TimeGenerated,*) by SubmissionId,NetworkMessageId,UserId
-            ) on SubmissionId, NetworkMessageId, UserId
+            |  summarize arg_max( TimeGenerated,*) by SubmissionId
+            ) on SubmissionId
 | project  NetworkMessageId, Result, SubmissionId, UserId, SubmissionType
 | extend Result = iif( isempty( Result),'NotMarked',Result)
 | summarize ResultCount_TP=countif( SubmissionType == Result) 
