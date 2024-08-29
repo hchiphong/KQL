@@ -1,0 +1,6 @@
+# https://redcanary.com/blog/threat-detection/bav2ropc/
+# Description: Get users use legacy ROPC
+SigninLogs
+| where TimeGenerated >ago(90d)
+| where   AuthenticationProtocol == 'ropc'
+| distinct UserPrincipalName
