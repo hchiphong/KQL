@@ -1,0 +1,17 @@
+// This query return remote login in non-cloud,non-vm public facing devices. Normally, physically laptop, device shouldnt be expose to public and get remote login from public IP.
+let Devices=
+DeviceInfo
+| where Timestamp >ago(10d)
+| summarize arg_max(Timestamp,*) by DeviceName
+| where CloudPlatforms has "Arc" or isempty( CloudPlatforms) // NonCloud Device
+| where IsInternetFacing
+| where OnboardingStatus =='Onboarded'
+| project DeviceName, AdditionalFields
+;
+DeviceLogonEvents
+| where Timestamp >ago(1d)
+| where DeviceName in~ ( Devices)
+| where RemoteIPType == 'Public'
+| summarize Accounts=make_set(AccountName), UniqueAccount=dcount(AccountName),IPAddress= make_set( RemoteIP), UniqueIP=dcount( RemoteIP) by DeviceName, LogonType
+| join kind=leftouter  Devices on DeviceName
+| project-away DeviceName1
