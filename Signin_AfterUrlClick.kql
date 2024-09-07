@@ -29,7 +29,10 @@ UrlClickEvents
     (
         step UrlClick output=none: Type=="UrlClickEvents" => ClickTime = Timestamp ;
         step Login : Type=="SigninLogs"  and  CreatedDateTime- UrlClick.ClickTime between (5s .. 300s ) 
-                        and (not( ipv4_is_in_range(IPAddress,format_ipv4_mask(UrlClick.IPAddress,24))) or IPAddress has ":" or UrlClick.IPAddress has ":") //subnet of click IP different from signin IP, which can be adjusted
+                        and (
+                            not( ipv4_is_in_range(IPAddress,format_ipv4_mask(UrlClick.IPAddress,24))) 
+                            or ((IPAddress has ":" or UrlClick.IPAddress has ":") and IPAddress != UrlClick.IPAddress)
+                            ) //subnet of click IP different from signin IP, which can be adjusted
                         => LoginTime= CreatedDateTime, ClickTime=UrlClick.ClickTime, Url=UrlClick.Url,ClickIP=UrlClick.IPAddress ;
     )
     | project LoginTime, AccountUpn, ClickTime,  LoginIPAddress= IPAddress,AppDisplayName, ResourceDisplayName, LoginResult=strcat(ResultType,"-",ResultDescription), EventGroupNumber=id,RiskLevel,Risks,Url,ClickIP, CorrelationId, TenantId
