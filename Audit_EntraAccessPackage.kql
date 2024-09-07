@@ -1,0 +1,6 @@
+let AccessPackageOperation = dynamic(["UpdateEntitlementGrantRequest","CreateEntitlementGrantSystemRemoveRequest","RemoveEntitlementResourceAssignment","FulfillEntitlementResourceAssignment","FulfillEntitlementGrantRequest","CreateEntitlementGrantUserAddRequest","CancelEntitlementGrantRequest","ApproveEntitlementGrantRequest","ReadyToFulfillEntitlementGrantRequest","CreateEntitlementGrantAdminAddRequest","CreateEntitlementGrantAdminRemoveRequest","AutoApproveEntitlementGrantRequest","UpdateEntitlementCatalog","CreateEntitlementGrantPolicy","CreateEntitlement","UpdateEntitlementGrantPolicy","UpdateEntitlement","DenyEntitlementGrantRequest","FailedEntitlementGrantRequest","DeleteEntitlementGrantRequestForDeletedUserInAad","DeleteEntitlementGrantForDeletedUserInAad","TimeoutEntitlementGrantRequest","CreateEntitlementGrantUserRemoveRequest","ReprocessAssignment","CreateEntitlementCatalog","DeleteEntitlementGrantPolicy","DeleteEntitlement","ExtendEntitlementGrant","CreateEntitlementGrantUserExtendRequest","PartiallyFulfilledEntitlementGrantRequest","PendingNotBeforeEntitlementGrantRequest","CreateIncompatibleEntitlement"]
+);
+AuditLogs
+| where TimeGenerated >ago(10d)
+| where AADOperationType in ( AccessPackageOperation )
+// To be Dev
