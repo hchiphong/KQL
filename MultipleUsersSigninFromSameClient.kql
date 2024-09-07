@@ -1,9 +1,17 @@
-Base on microsoft document [SignInLogs Schema](https://learn.microsoft.com/en-us/azure/azure-monitor/reference/tables/signinlogs) `CorrelationId: The identifier that's sent from the client when sign-in is initiated. This is used for troubleshooting the corresponding sign-in activity when calling for support.`
+// Base on microsoft document [SignInLogs Schema](https://learn.microsoft.com/en-us/azure/azure-monitor/reference/tables/signinlogs) `CorrelationId: The identifier that's sent from the client when sign-in is initiated. This is used for troubleshooting the corresponding sign-in activity when calling for support.`
+// It is suspicious when multiple user sign in attempt from single correlationID, could be potential password spray.
 
-It is suspicious when multiple user sign in attempt from single correlationID
-
-```
-union SigninLogs, AADNonInteractiveUserSignInLogs
-| summarize make_set(UserId), make_set( UserDisplayName), make_set( AppDisplayName), make_set(IPAddress) by CorrelationId
-| where array_length( set_UserId) >1
-```
+let searchTimeRange = 7d;
+let msftFirstPartyApp= externaldata(AppId:string, AppDisplayName:string)
+[
+  h@"https://raw.githubusercontent.com/hchiphong/KQL/main/MicrosoftFirstPartyApp.csv"
+]
+with(format="csv");
+SigninLogs
+| where ingestion_time() >= ago(searchTimeRange)
+| where AppDisplayName in (( msftFirstPartyApp | distinct AppDisplayName)) // App in microsoft first party app
+| where UserPrincipalName has "@" //ignore uid
+| extend deviceId = tostring(DeviceDetail.deviceId)
+| where isempty(deviceId)
+| summarize UserIds=make_set(UserId), UserDisplayNames=make_set( UserDisplayName), UserPrincipalName=make_set(UserPrincipalName), Apps=make_set( AppDisplayName), IPAddress=make_set(IPAddress), UserHasRiskSession= make_set_if(UserPrincipalName,RiskEventTypes !='[]' or RiskEventTypes_V2 !='[]' ) by CorrelationId
+| where array_length( UserIds) >1
