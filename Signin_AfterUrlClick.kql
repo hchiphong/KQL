@@ -1,10 +1,15 @@
-// This query looks for sign in attempt made from first seen IPAddress in 30d after user clicked Url.
+// This query looks for Risky sign in attempt made from first seen IPAddress in 30d after user clicked Url.
 let searchTimeRange = 14d;
+let msftFirstPartyApp= externaldata(AppId:string, AppDisplayName:string)
+[
+  h@"https://raw.githubusercontent.com/hchiphong/KQL/main/MicrosoftFirstPartyApp.csv"
+]
+with(format="csv");
 let data =
 union
 ( SigninLogs
 // Exlucde Corp Device
-| where AppDisplayName =='OfficeHome' // This can be adjust
+| where AppDisplayName in ( msftFirstPartyApp | distinct AppDisplayName) // App in microsoft first party app
 | where UserPrincipalName has "@" //ignore uid
 | extend deviceId = tostring(DeviceDetail.deviceId), displayName = tostring(DeviceDetail.displayName)
 | where isempty(deviceId)
