@@ -1,0 +1,5 @@
+// This query for User mailbox forward rule from uncommon ISP.
+CloudAppEvents
+| where Timestamp >ago(30d)
+| where ActionType in ("New-InboxRule","Set-InboxRule","UpdateInboxRule")
+| where UncommonForUser has "ISP" and (isempty( IPTags) or IPTags has 'Anonymous proxy')
