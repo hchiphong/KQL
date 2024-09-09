@@ -1,0 +1,7 @@
+// This query is used to audit eDiscovery Usage
+
+let eDiscoveryOperation= dynamic(["SearchUpdated","SearchStarted","SearchViewed","SearchCreated","SearchRemoved","SearchExported","SearchExportDownloaded","SearchPreviwed","PreviewItemListed","CaseAdded","CaseRemoved","CaseRemoved"]);
+CloudAppEvents
+| where TimeGenerated >ago(30d)
+| where ActionType in( eDiscoveryOperation)
+| extend ObjectDisplayName = RawEventData.ObjectId, Query= coalesce(RawEventData.Query, RawEventData.QueryText), UserPrincipalName= RawEventData.UserId
