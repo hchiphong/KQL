@@ -1,0 +1,40 @@
+// This query is used to hunt or audit SendAs activity
+
+// General search
+let ActorUPNs=dynamic(['Userupn']); // search for mails  was impersonated by this user
+let SendAsMailboxAddress=dynamic(['SendAsMailboxEmailAddress','GroupMailboxAddress']);// search for original sender of the email
+let InternetMessageId_list=dynamic(['InternetMessageId_1','<random@random.CANPRD01.PROD.OUTLOOK.COM>']);  // search by specify internetmessageid 
+CloudAppEvents
+| where ActionType == 'SendAs'
+| extend Actor=RawEventData.UserId, SendAsMailbox = RawEventData.SendAsUserSmtp, InternetMessageId=RawEventData.Item.InternetMessageId
+| where Actor in~( ActorUPNs) or InternetMessageId in~( InternetMessageId_list) or SendAsMailbox in~( SendAsMailboxAddress)
+//| where UncommonForUser has "ISP" and (isempty( IPTags) or IPTags has 'Anonymous proxy') //Optional Filter Only in Defender
+
+
+// Defender Only, Risky SendAs Session
+let searchTime= ago(7d);
+let riskysession=
+AADSignInEventsBeta
+| where Timestamp > searchTime 
+| where isnotempty( RiskEventTypes) or isnotempty( RiskLevelAggregated) or isnotempty( RiskLevelDuringSignIn)
+;
+CloudAppEvents
+| where Timestamp > searchTime
+| where ActionType == 'SendAs'
+| extend SessionId = tostring(RawEventData.SessionId)
+| where SessionId in ((riskysession | distinct SessionId))
+| extend Actor=RawEventData.UserId, SendAsMailbox = RawEventData.SendAsUserSmtp, InternetMessageId=RawEventData.Item.InternetMessageId
+
+
+// SendAs session has alert on
+let searchTime= ago(7d);
+let AlertSession=AlertEvidence 
+| where Timestamp > searchTime 
+| where EntityType == "CloudLogonSession"
+| project SessionId = tostring(todynamic(AdditionalFields).SessionId), AlertId, Title,Severity
+;
+CloudAppEvents
+| where Timestamp > searchTime 
+| extend SessionId = tostring(RawEventData.SessionId)
+| join kind=inner  AlertSession on SessionId
+| extend Actor=RawEventData.UserId, SendAsMailbox = RawEventData.SendAsUserSmtp, InternetMessageId=RawEventData.Item.InternetMessageId
