@@ -1,4 +1,4 @@
-// This query for User mailbox forward rule from uncommon ISP.
+// This query for User mailbox forward rule from uncommon ISP. Note: This query only runable in Defender because UncommonForUser column is not available in Sentinel
 CloudAppEvents
 | where Timestamp >ago(30d)
 | where ActionType in ("New-InboxRule","Set-InboxRule","UpdateInboxRule")
