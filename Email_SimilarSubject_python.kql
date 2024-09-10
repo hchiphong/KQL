@@ -1,30 +1,25 @@
 // This query will extract list of subject by querying log analytics workspace and compare with subject varible. Use to hunt for similar subject.
 // replace subscription id, rg name, workspace name before using.
 
+
 let similarityThreshold =0.7;
 let subject = '[External] [Action Needed]New Messaging';
 let timeRange = ago(1d); // too much data with exceed KQL limit
-let CL1 = 'ade.loganalytics.io/subscriptions/<subscriptionId>/resourcegroups/<RGName>/providers/microsoft.operationalinsights/workspaces/<WSName>';
-let data=cluster(CL1).database('<WSName>').EmailEvents
+let LA1 = 'ade.loganalytics.io/subscriptions/<subscriptionId>/resourcegroups/<RGName>/providers/microsoft.operationalinsights/workspaces/<WSName>';
+let script = 
+        externaldata(script:string)
+        [h'https://raw.githubusercontent.com/hchiphong/KQL/main/Email_SimilarSubject_script.py']
+        with(format = raw);
+let data=cluster(LA1).database('<WSName>').EmailEvents
 | where TimeGenerated >timeRange
 | where EmailDirection =='Inbound'
 | summarize count() by Subject, EmailClusterId // lower result return size
 | project Subject, count_, EmailClusterId
 ;
 data
-| union (print Subject="hello") // Without this query will throw error, probably adding this row will force it to use current cluster for python operation because LA doesnt support python.
-| evaluate python(
-//
-typeof(*, similiar:double),//  Output schema: append a new fx column to original table 
-```
-import difflib
-def similar(a, b):
-    return difflib.SequenceMatcher(None, a, b).ratio()
-result = df
-n = df.shape[0]
-subject = kargs["subject"]
-result["similiar"] = result.apply( lambda row: similar(row['Subject'],subject), axis=1)
-```
-, bag_pack('subject', subject)    // parameters
+| evaluate hint.remote=local python(
+typeof(*, similiar:double),
+toscalar(script),
+bag_pack('subject', subject) 
 )
 | where similiar >similarityThreshold
