@@ -1,0 +1,10 @@
+// After ingesting proofpoint data to LA. This query for searching url in ProofpointPOD data.
+
+let url_list = dynamic(['tiktok.com/////link']);
+ProofpointPOD_message_CL
+| where msgParts_s has_any(url_list)
+// extract
+| extend Url= todynamic(msgParts_s)[0].urls
+| mv-expand Url
+| where Url has_any(url_list)
+| project SenderMailFromAddress= envelope_from_s, RecipientAddress= envelope_rcpts_s, RecipientCC= msg_normalizedHeader_cc_s, Subject = msg_normalizedHeader_subject_s, Url, Threatfolder=filter_quarantine_folder_s, filter_disposition_s,filter_routeDirection_s,filter_routes_s
