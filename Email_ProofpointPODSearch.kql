@@ -1,0 +1,31 @@
+// After ingesting proofpoint data to LA. This query for searching url in ProofpointPOD data.
+
+let url_list = dynamic(['tiktok.com/////link']);
+ProofpointPOD_message_CL
+| where msgParts_s has_any(url_list)
+// extract
+| mv-expand  todynamic(msgParts_s)
+| project TimeGenerated, SenderMailFromAddress= envelope_from_s, RecipientAddress= envelope_rcpts_s, RecipientCC= msg_normalizedHeader_cc_s, Subject = msg_normalizedHeader_subject_s, msgParts_s, Threatfolder=filter_quarantine_folder_s, filter_disposition_s,filter_routeDirection_s,filter_routes_s
+| extend msgPartdetectedName = msgParts_s.detectedName,
+         msgPartdisposition = msgParts_s.disposition,
+         msgPartlabeledName = msgParts_s.labeledName,
+         msgPartmd5 = msgParts_s.md5,
+         msgPartUrl = msgParts_s.urls,
+         msgPartMetadata= msgParts_s.metadata
+| where msgPartUrl has_any(url_list)
+
+// After ingesting proofpoint data to LA. This query for searching url in ProofpointPOD data.
+
+let attName = dynamic(['a.exe']);
+ProofpointPOD_message_CL
+| where msgParts_s has_any(attName)
+// extract
+| mv-expand  todynamic(msgParts_s)
+| project TimeGenerated, SenderMailFromAddress= envelope_from_s, RecipientAddress= envelope_rcpts_s, RecipientCC= msg_normalizedHeader_cc_s, Subject = msg_normalizedHeader_subject_s, msgParts_s, Threatfolder=filter_quarantine_folder_s, filter_disposition_s,filter_routeDirection_s,filter_routes_s
+| extend msgPartdetectedName = msgParts_s.detectedName,
+         msgPartdisposition = msgParts_s.disposition,
+         msgPartlabeledName = msgParts_s.labeledName,
+         msgPartmd5 = msgParts_s.md5,
+         msgPartUrl = msgParts_s.urls,
+         msgPartMetadata= msgParts_s.metadata
+| where msgPartlabeledName has_any(attName)
