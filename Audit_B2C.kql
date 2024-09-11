@@ -1,0 +1,6 @@
+// Query search for B2C tenant creation
+
+AuditLogs
+| where TimeGenerated >ago(30d)
+| where LoggedByService == 'B2C'
+| where OperationName =~ 'Initialize tenant'
