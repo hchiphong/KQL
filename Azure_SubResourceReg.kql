@@ -1,0 +1,4 @@
+// This query search for subscription resource provider registration in Azure
+AzureActivity
+| where TimeGenerated >ago(30d)
+| where OperationNameValue endswith "/REGISTER/ACTION"
