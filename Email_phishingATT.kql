@@ -1,0 +1,5 @@
+// This query hunt for Attachment Name contains receipient name.
+
+EmailAttachmentInfo
+| where isempty( SenderObjectId)
+| where FileName has(tostring(split(RecipientEmailAddress,"@")[0]))
