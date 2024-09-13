@@ -1,0 +1,28 @@
+//This query audits storage account setting modification. notable setting would be disable retention policy, CORS, 
+let timeRange = ago(1d);
+let SettingModifyAcitity=
+AzureActivity
+| where EventSubmissionTimestamp > timeRange
+| where OperationNameValue == 'MICROSOFT.STORAGE/STORAGEACCOUNTS/BLOBSERVICES/WRITE'
+| extend  Requestbody = parse_json(parse_json(Properties).requestbody)
+| where isnotempty( Requestbody)
+;
+AzureActivity
+| where EventSubmissionTimestamp > timeRange
+| where CorrelationId in (( SettingModifyAcitity | distinct CorrelationId))
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId
+
+
+//This query audits storage account setting modification. more result will return such as networking, regen key "MICROSOFT.STORAGE/STORAGEACCOUNTS/REGENERATEKEY/ACTION"
+let timeRange = ago(1d);
+let SettingModifyAcitity=
+AzureActivity
+| where EventSubmissionTimestamp > timeRange
+| where OperationNameValue startswith 'MICROSOFT.STORAGE/STORAGEACCOUNTS/'
+| extend  Requestbody = parse_json(parse_json(Properties).requestbody)
+| where isnotempty( Requestbody)
+;
+AzureActivity
+| where EventSubmissionTimestamp > timeRange
+| where CorrelationId in (( SettingModifyAcitity | distinct CorrelationId))
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId
