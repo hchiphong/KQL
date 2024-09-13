@@ -1,0 +1,13 @@
+// Query is used to audit Defender's setting modification. If we see RoleAssignment Write in same CorrelationID which mean actor was updating or enabling setting. if it is Delete means actor disable defender for storage. the role assignment here is to "storageDataScanner" App.  CallerIPAddress also include MSFT IP and Caller request IP.
+
+let timeRange = ago(1d);
+let DiagnosticSettingOperation=dynamic([@"MICROSOFT.SECURITY/ADVANCEDTHREATPROTECTIONSETTINGS/WRITE",@"MICROSOFT.SECURITY/DEFENDERFORSTORAGESETTINGS/WRITE"]);
+let SettingModifyAcitity=
+AzureActivity
+| where EventSubmissionTimestamp > timeRange
+| where OperationNameValue in (DiagnosticSettingOperation)
+;
+AzureActivity
+| where EventSubmissionTimestamp > timeRange
+| where CorrelationId in (( SettingModifyAcitity | distinct CorrelationId))
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId
