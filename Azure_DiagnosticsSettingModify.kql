@@ -1,0 +1,6 @@
+// Query looks for any modification to azure diagnostic setting. Create or update will fail under WRITE operation. CallerIpAddress most like actor IP instead of MSFT IP. for update or create check RequestBody for detail.
+
+let DiagnosticSettingOperation=dynamic([@"MICROSOFT.INSIGHTS/DIAGNOSTICSETTINGS/WRITE",@"MICROSOFT.INSIGHTS/DIAGNOSTICSETTINGS/DELETE"]);
+AzureActivity
+| where OperationNameValue in (DiagnosticSettingOperation)
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody, CorrelationId, Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId
