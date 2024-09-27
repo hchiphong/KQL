@@ -8,7 +8,7 @@ let timeRange = ago(1d); // too much data with exceed KQL limit
 let LA1 = 'ade.loganalytics.io/subscriptions/<subscriptionId>/resourcegroups/<RGName>/providers/microsoft.operationalinsights/workspaces/<WSName>';
 let script = 
         externaldata(script:string)
-        [h'https://raw.githubusercontent.com/hchiphong/KQL/python/main/Email_SimilarSubject_script.py']
+        [h'https://raw.githubusercontent.com/hchiphong/KQL/refs/heads/main/python/Email_SimilarSubject_script.py']
         with(format = raw);
 let data=cluster(LA1).database('<WSName>').EmailEvents
 | where TimeGenerated >timeRange

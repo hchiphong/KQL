@@ -2,7 +2,7 @@
 let searchTimeRange = 14d;
 let msftFirstPartyApp= externaldata(AppId:string, AppDisplayName:string)
 [
-  h@"https://raw.githubusercontent.com/hchiphong/KQL/data/main/MicrosoftFirstPartyApp.csv"
+  h@"https://raw.githubusercontent.com/hchiphong/KQL/refs/heads/main/data/MicrosoftFirstPartyApp.csv"
 ]
 with(format="csv");
 let data =
