@@ -1,17 +1,72 @@
+// Process Tree, due to Sentinel doesnt have UniqueProcessId, we have to calculate.
 let ProcessTree = (MachineName:string, cmd:string, when:timespan  =30d ){
 let DeviceProcessLogs= materialize (
 DeviceProcessEvents
 | where TimeGenerated >ago(when) // Adjust Time for more visibility
-| where DeviceName == MachineName
-| extend EnhancedProcessID = strcat(DeviceId,'-', ProcessId,'-', ProcessCreationTime), EnhancedInitProcessID = strcat(DeviceId,'-', InitiatingProcessId,'-', InitiatingProcessCreationTime)
+| where DeviceName =~ MachineName
+| extend ProcessUniqueId = hash_many(DeviceId, ProcessId, ProcessCreationTime), InitiatingProcessUniqueId = hash_many(DeviceId, InitiatingProcessId, InitiatingProcessCreationTime)
 );
 DeviceProcessLogs
-| make-graph EnhancedProcessID -->  EnhancedInitProcessID with DeviceProcessLogs on EnhancedProcessID 
-| graph-match (End) -[Command*1..10]-> (Start) 
-    // Filter here
-    // Filter by start Process
-    where Start.ProcessCommandLine has cmd 
-    // // Filter by end Process
-    //  where Start.ProcessCommandLine contains cmd
-    project Start.FileName, Start.ProcessId, End.FileName, End.ProcessId, Command.FileName,Command.ProcessId,Command.ProcessCreationTime, Command.ProcessCommandLine
+| make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
+| graph-match (Child) -[ChildCommand*1 .. 10]-> (Current) -[Command*1 .. 10]-> (Parent) 
+    where Current.ProcessCommandLine has cmd 
+    project Parent.FileName, Parent.ProcessId, Parent.ProcessCreationTime, Parent.ProcessCommandLine,
+            Current.FileName, Current.ProcessCreationTime, Current.ProcessId, Current.ProcessUniqueId, Current.ProcessCommandLine, 
+            Command.FileName, Command.ProcessId, Command.ProcessCreationTime, Command.ProcessCommandLine, 
+            ChildCommand.ProcessCommandLine, ChildCommand.ProcessCreationTime,
+            Child.ProcessCreationTime, Child.ProcessCommandLine
+| extend
+    EnrichCommandProc= zip(Command_ProcessCreationTime, Command_ProcessCommandLine),
+    EnrichChildCommandProc = zip(ChildCommand_ProcessCreationTime, ChildCommand_ProcessCommandLine)
+| extend TreeCommand = array_concat(EnrichChildCommandProc, EnrichCommandProc)
+| summarize TreeNodes=arg_max(array_length(TreeCommand), *) by Current_ProcessUniqueId
+| project TreeNodes,TreeCommand, Current_ProcessUniqueId, Current_ProcessCreationTime
 };
+ProcessTree('DeviceName', 'command', 7d)
+
+// ProcessTree base on MDE UniqueProcessID
+let ProcessTree = (MachineName:string, cmd:string, when:timespan  =30d ){
+let DeviceProcessLogs= materialize (
+    DeviceProcessEvents
+    | where TimeGenerated >ago(when) // Adjust Time for more visibility
+    | where DeviceName =~ MachineName
+)
+;
+DeviceProcessLogs
+| make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
+| graph-match (Child) -[ChildCommand*1 .. 10]-> (Current) -[Command*1 .. 10]-> (Parent) 
+    where Current.ProcessCommandLine has cmd 
+    project Parent.FileName, Parent.ProcessId, Parent.ProcessCreationTime, Parent.ProcessCommandLine,
+            Current.FileName, Current.ProcessCreationTime, Current.ProcessId, Current.ProcessUniqueId, Current.ProcessCommandLine, 
+            Command.FileName, Command.ProcessId, Command.ProcessCreationTime, Command.ProcessCommandLine, 
+            ChildCommand.ProcessCommandLine, ChildCommand.ProcessCreationTime,
+            Child.ProcessCreationTime, Child.ProcessCommandLine
+| extend
+    EnrichCommandProc= zip(Command_ProcessCreationTime, Command_ProcessCommandLine),
+    EnrichChildCommandProc = zip(ChildCommand_ProcessCreationTime, ChildCommand_ProcessCommandLine)
+| extend TreeCommand = array_concat(EnrichChildCommandProc, EnrichCommandProc)
+| summarize TreeNodes=arg_max(array_length(TreeCommand), *) by Current_ProcessUniqueId // longest tree of the process
+| project TreeNodes,TreeCommand, Current_ProcessUniqueId, Current_ProcessCreationTime
+};
+ProcessTree('DeviceName', 'command', 7d)
+
+
+// MDE rare processtree
+let DeviceProcessLogs= materialize (
+    DeviceProcessEvents
+    | where TimeGenerated >ago(7d) // Adjust Time for more visibility
+    )
+;
+DeviceProcessLogs
+| make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
+| graph-match (Child) -[ChildCommand*1 .. 10]-> (Current) -[Command*1 .. 10]-> (Parent) 
+    project Parent.FileName, Parent.ProcessId, Parent.ProcessCreationTime, Parent.ProcessCommandLine,
+            Current.FileName, Current.ProcessCreationTime, Current.ProcessId, Current.ProcessUniqueId, Current.ProcessCommandLine, 
+            Command.FileName, Command.ProcessId, Command.ProcessCreationTime, Command.ProcessCommandLine, 
+            ChildCommand.FileName, ChildCommand.ProcessCreationTime,
+            Child.ProcessCreationTime, Child.ProcessCommandLine
+| extend TreeProcess = array_concat(ChildCommand_FileName, Command_FileName)
+| summarize TreeNodes=arg_max(array_length(TreeProcess), *) by Current_ProcessUniqueId // Remove this for including smaller tree which may cost query resource
+| summarize count() by  tostring(TreeProcess)
+| where count_ <10
+// To be Dev for anomaly
