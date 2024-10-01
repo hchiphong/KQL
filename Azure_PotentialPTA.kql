@@ -1,0 +1,9 @@
+// when install PTA, user has to sign in to Azure AD Application Proxy app when executing the AADConnectAgentAuthSetup.exe
+SigninLogs
+| where TimeGenerated >ago(90d)
+| where AppDisplayName has 'Azure AD Application Proxy'
+
+// When PTA established, following audit event will be logged.
+AuditLogs
+| where TimeGenerated >ago(90d)
+| where OperationName == "Register connector"

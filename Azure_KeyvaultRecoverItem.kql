@@ -1,0 +1,5 @@
+// Query audit keyvault recovery, require dianogstic log configured.
+AzureDiagnostics
+| where TimeGenerated >ago(30d)
+| where ResourceProvider == 'MICROSOFT.KEYVAULT'
+| where OperationName endswith "Recover"

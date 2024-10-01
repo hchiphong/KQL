@@ -1,0 +1,16 @@
+// Require MDI log, mostly monitor DC,server
+IdentityDirectoryEvents
+| where Timestamp >ago(30d)
+| where ActionType == 'User Phone Number changed'
+| extend OldNum= AdditionalFields["FROM User Phone Number"]
+        ,NewNum= AdditionalFields["TO User Phone Number"]
+// | where OldNum != 'N/A' // reg phone number
+// | where NewNum != 'N/A' // Remove phone number
+
+
+// Entra AuditLogs
+AuditLogs
+| where TimeGenerated >ago(10d)
+| where OperationName == 'Update user'
+| where parse_json(TargetResources[0]).modifiedProperties has 'TelephoneNumber'
+// Parsing to extract

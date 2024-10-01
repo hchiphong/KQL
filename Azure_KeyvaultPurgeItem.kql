@@ -1,0 +1,12 @@
+// Query audit keyvault data purging, require dianogstic log configured. Purging is pernamently delete data while delete operation is usually soft-delete.
+AzureDiagnostics
+| where TimeGenerated >ago(30d)
+| where ResourceProvider == 'MICROSOFT.KEYVAULT'
+| where OperationName endswith "Purge"
+
+
+// Dianogstic log actual tell what permission changed
+AzureDiagnostics
+| where TimeGenerated >ago(30d)
+| where ResourceProvider == 'MICROSOFT.KEYVAULT'
+| where OperationName == 'VaultPatch'

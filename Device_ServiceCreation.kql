@@ -1,0 +1,4 @@
+// Require MDI log, mostly monitor DC,server
+IdentityDirectoryEvents
+| where ActionType == 'Service creation'
+| evaluate bag_unpack(AdditionalFields)

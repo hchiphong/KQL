@@ -1,0 +1,56 @@
+ let requestUri_prefix =dynamic([
+    'https://graph.microsoft.com/beta/users'
+    ,'https://graph.microsoft.com/v1.0/users'
+    ,'https://graph.microsoft.com/beta/groups'
+    ,'https://graph.microsoft.com/v1.0/groups'
+    ,'https://graph.microsoft.com/beta/applications'
+    ,'https://graph.microsoft.com/v1.0/applications'
+    ,'https://graph.microsoft.com/beta/servicePrincipals'
+    ,'https://graph.microsoft.com/v1.0/servicePrincipals'
+    ,'https://graph.microsoft.com/beta/devices'
+    ,'https://graph.microsoft.com/v1.0/devices'
+    ,'https://graph.microsoft.com/beta/directoryRoles'
+    ,'https://graph.microsoft.com/v1.0/directoryRoles'
+    ,"https://graph.microsoft.com/beta/roleManagement/directory/roleAssignments"
+    ,"https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments"
+    ,"https://graph.microsoft.com/beta/roleManagement/directory/roleDefinitions"
+    ,"https://graph.microsoft.com/v1.0/roleManagement/directory/roleDefinitions"
+    ]);
+let prefix_regex = strcat("^(", strcat_array(requestUri_prefix, ")|("), ")");
+MicrosoftGraphActivityLogs
+| where isnotempty( UserId)
+| where RequestUri !has "microsoft.graph.delta"
+//Filter for specific graph api
+| where RequestUri matches regex prefix_regex
+| make-series SumBytes=sum( ResponseSizeBytes)  default =0 on TimeGenerated  from ago(30d) to now() step 1d   by UserId
+| extend (anomalies, score, baseline) = series_decompose_anomalies(SumBytes, 7 , -1, 'linefit')
+| mv-expand  TimeGenerated to typeof(datetime )
+            , SumBytes to typeof(double)
+            , anomalies to typeof(double)
+            , score to typeof(double)
+            , baseline to typeof(double)
+| where anomalies == 1
+| join kind=leftouter ( IdentityInfo | where TimeGenerated >ago(30d) | summarize arg_max(TimeGenerated,AccountObjectId, AccountUPN ) by UserId=AccountObjectId) on UserId
+// Filter
+| where baseline > 1000 and SumBytes > 1e7 // 10MB
+| where TimeGenerated >ago(4d) // Filter recent anomaly, doesnt affect lookup time
+| sort by score desc
+| project-away TimeGenerated1,UserId1
+
+
+//future investigate user  by copying UserId
+let userid= '';
+MicrosoftGraphActivityLogs
+| where TimeGenerated >ago(30d)
+| where UserId == userid
+| extend RequestService = extract(@'(https?://[^/]+/[^/]+/[^/?]+)', 1,RequestUri)
+| summarize SumBytes=sum( ResponseSizeBytes) by bin( TimeGenerated,30min),RequestService, SignInActivityId
+| sort  by SumBytes desc 
+
+// Note if RequestUri == "https://graph.microsoft.com/beta/$batch" user Operation ID to search what actually queried in batch
+
+//Check Sigin
+SignInToken= '';
+union AADNonInteractiveUserSignInLogs, SignInLogs
+| where TimeGenerated >ago(30d)
+| where UniqueTokenIdentifier == SignInToken

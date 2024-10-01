@@ -1,0 +1,4 @@
+// Azure Acitivity only let us know change happened in KV. actual change have to check dianogstic log.
+AzureActivity
+| where OperationNameValue == "MICROSOFT.KEYVAULT/VAULTS/WRITE"
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId

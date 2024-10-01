@@ -1,0 +1,5 @@
+// Look for SMB file copy event to public IP address. Require MDI log, mostly monitor DC,server
+IdentityDirectoryEvents
+| where Timestamp >ago(30d)
+| where ActionType == 'SMB file copy'
+| where not( ipv4_is_private( DestinationIPAddress))

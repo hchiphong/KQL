@@ -1,0 +1,26 @@
+// With Sentinel Audit enable we can get more detail of what modified
+// Get disabled or deleted rule
+SentinelAudit
+| where OperationName in('Microsoft.SecurityInsights/alertRules/Delete','Microsoft.SecurityInsights/alertRules/Write')
+| where ExtendedProperties.UpdatedResourceState == 'null'
+    or  (ExtendedProperties.OriginalResourceState != 'null'
+        and parse_json(tostring(ExtendedProperties.UpdatedResourceState)).properties.enabled == false 
+    )
+
+// attacker can bypass by just add simple kql to whitelist. so we audit rule logic change
+// Query Logic change
+SentinelAudit
+| where OperationName == 'Microsoft.SecurityInsights/alertRules/Write'
+| where ExtendedProperties.OriginalResourceState != 'null' // Not newly create
+| extend OldLogic = tostring(parse_json(tostring(ExtendedProperties.OriginalResourceState)).properties.query)
+        ,NewLogic = tostring(parse_json(tostring(ExtendedProperties.UpdatedResourceState)).properties.query)
+| where OldLogic != NewLogic
+
+// AzureActivity only give us high level log about rule update and delete. Doesnt have updated details
+AzureActivity
+| where ActivityStatusValue == 'Success'
+|  where (OperationNameValue == "MICROSOFT.SECURITYINSIGHTS/ALERTRULES/WRITE" 
+            and parsejson(Properties).statusCode != 'Created' // Ignore Rule creation
+        ) 
+        or OperationNameValue  == 'MICROSOFT.SECURITYINSIGHTS/ALERTRULES/DELETE'
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId
