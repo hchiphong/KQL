@@ -1,0 +1,4 @@
+// Potential SSH enabled for function app with "az webapp create-remote-connection"
+AzureActivity
+| where TimeGenerated >ago(30d)
+| where OperationNameValue  == 'MICROSOFT.WEB/SITES/CONFIG/SNAPSHOTS/LISTSECRETS/ACTION'

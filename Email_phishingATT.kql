@@ -1,5 +1,16 @@
 // This query hunt for Attachment Name contains receipient name.
 
 EmailAttachmentInfo
-| where isempty( SenderObjectId)
-| where FileName has(tostring(split(RecipientEmailAddress,"@")[0]))
+| where isempty(SenderObjectId)
+| where FileName has (tostring(split(RecipientEmailAddress, "@")[0]))
+
+// Enrich
+EmailAttachmentInfo
+| where isempty(SenderObjectId)
+| where FileName has (tostring(split(RecipientEmailAddress, "@")[0]))
+| join kind=inner (EmailEvents
+    | project RecipientEmailAddress, NetworkMessageId, LatestDeliveryLocation)
+    on NetworkMessageId, RecipientEmailAddress
+| project-away RecipientEmailAddress1, NetworkMessageId1
+// Filter
+// | where LatestDeliveryLocation !in ('Quarantine','Dropped','Failed')

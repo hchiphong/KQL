@@ -1,0 +1,16 @@
+// Query is used for auditing Mail client in environment htps://learn.microsoft.com/en-us/exchange/clients/clients?view=exchserver-2019
+// | Mail Client                               | ClientInfoString                                   | MailAccessType |
+// |-------------------------------------------|----------------------------------------------------|----------------|
+// | "Classic" Outlook                         | Client=MSExchangeRPC                               | Sync           |
+// | "New" Outlook                             | Client=REST                                        | Bind           |
+// | Outlook on the Web (formerly OWA)         | Client=OWA                                         | Bind           |
+// | Outlook on Android                        | Client=OutlookService; Outlook-Android/2.0         | Bind           |
+// | Outlook on iOS                            | Client=OutlookService; Outlook-iOS/2.0             | Bind           |
+// | Older Mobile devices                      | Client=ActiveSync                                  | Sync           |
+// | Thunderbird (and many other mail clients) | Client=POP3/IMAP4                                  | Bind           |
+CloudAppEvents
+| where ActionType == 'MailItemsAccessed'
+| extend  ClientInfoString= split(tostring( RawEventData.ClientInfoString),";")
+| mv-expand ClientInfoString to typeof(string)
+| where ClientInfoString contains "Client="
+| summarize dcount( AccountId,4) by AccountType, ClientInfoString

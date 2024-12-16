@@ -1,0 +1,16 @@
+// Remove delegation in lighthouse. would impair detection from MSSP security service.
+let corId= AzureActivity
+| where OperationNameValue in ('MICROSOFT.MANAGEDSERVICES/REGISTRATIONDEFINITIONS/DELETE','MICROSOFT.MANAGEDSERVICES/REGISTRATIONASSIGNMENTS/DELETE')
+| distinct CorrelationId;
+AzureActivity
+| where CorrelationId in (( corId ))
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId
+
+
+// Create Delegation would be sight of persistence when tenant is compromised.
+let corId= AzureActivity
+| where OperationNameValue in ('MICROSOFT.MANAGEDSERVICES/REGISTRATIONDEFINITIONS/WRITE','MICROSOFT.MANAGEDSERVICES/REGISTRATIONASSIGNMENTS/WRITE')
+| distinct CorrelationId;
+AzureActivity
+| where CorrelationId in (( corId ))
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId

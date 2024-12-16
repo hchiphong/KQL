@@ -1,0 +1,20 @@
+// Audit Anonymous file share link created
+CloudAppEvents
+| where TimeGenerated >ago(30d)
+| where ActionType == "AnonymousLinkCreated"
+
+
+// Audit SecureLinkShared to group or external guest, correlate with 'SharingSet','AddedToSecureLink'
+CloudAppEvents
+| where TimeGenerated >ago(90d)
+| where ActionType == ('AddedToGroup','SecureLinkCreated')
+| where RawEventData.EventData has "SharingLinks"
+| extend SharedObject= tostring(RawEventData.ObjectId)
+        ,SiteUrl= tostring(RawEventData.SiteUrl)
+        ,TargetUserOrGroupName = tostring(RawEventData.TargetUserOrGroupName)
+        ,TargetUserOrGroupType = tostring(RawEventData.TargetUserOrGroupType)
+| where TargetUserOrGroupType != 'Member'
+| summarize count() by TargetUserOrGroupType
+
+
+// note in BEC compromise, Attacker can craft phishing sharepoint document from compromised account (domain A) and share it with other users => Analyst on receipient ( not domain A) could be blocked from accessing file to investigate. Analyst on domain A can check 'SecureLinkUsed' to determine which recipeint accessed phishing doc. 

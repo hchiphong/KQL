@@ -1,0 +1,6 @@
+// Query audit automation account.
+let AutomationAccOperation = dynamic(["MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/RUNBOOKS/WRITE","MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/RUNBOOKS/PUBLISH/ACTION","MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/RUNBOOKS/DELETE","MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/HYBRIDRUNBOOKWORKERGROUPS/HYBRIDRUNBOOKWORKERS/WRITE","MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/HYBRIDRUNBOOKWORKERGROUPS/WRITE"]);
+AzureActivity
+| where TimeGenerated >ago(30d)
+| where OperationNameValue in (AutomationAccOperation)
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId

@@ -1,0 +1,4 @@
+// Query Audit azure function change, enable ftp,... Query only let us know change event not what actually change. More detail about the change check Change Analysis.
+AzureActivity
+| where OperationNameValue == 'MICROSOFT.WEB/SITES/CONFIG/WRITE'
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId

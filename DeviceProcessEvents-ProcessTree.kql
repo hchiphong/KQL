@@ -19,7 +19,8 @@ DeviceProcessLogs
     EnrichCommandProc= zip(Command_ProcessCreationTime, Command_ProcessCommandLine),
     EnrichChildCommandProc = zip(ChildCommand_ProcessCreationTime, ChildCommand_ProcessCommandLine)
 | extend TreeCommand = array_concat(EnrichChildCommandProc, EnrichCommandProc)
-| summarize TreeNodes=arg_max(array_length(TreeCommand), *) by Current_ProcessUniqueId
+| extend Nodes=array_length( TreeCommand) 
+| summarize TreeNodes=arg_max(Nodes, *) by Current_ProcessUniqueId // longest tree of the process may lose some smaller node
 | project TreeNodes,TreeCommand, Current_ProcessUniqueId, Current_ProcessCreationTime
 };
 ProcessTree('DeviceName', 'command', 7d)
@@ -46,7 +47,8 @@ DeviceProcessLogs
     EnrichCommandProc= zip(Command_ProcessCreationTime, Command_ProcessCommandLine),
     EnrichChildCommandProc = zip(ChildCommand_ProcessCreationTime, ChildCommand_ProcessCommandLine)
 | extend TreeCommand = array_concat(EnrichChildCommandProc, EnrichCommandProc)
-| summarize TreeNodes=arg_max(array_length(TreeCommand), *) by Current_ProcessUniqueId // longest tree of the process
+| extend Nodes=array_length( TreeCommand)
+| summarize TreeNodes=arg_max(Nodes, *) by Current_ProcessUniqueId // longest tree of the process may lose some smaller node
 | project TreeNodes,TreeCommand, Current_ProcessUniqueId, Current_ProcessCreationTime
 };
 ProcessTree('DeviceName', 'command', 7d)

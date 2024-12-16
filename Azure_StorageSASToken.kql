@@ -1,0 +1,4 @@
+// Query Audit Azure Storage SAS Token usage
+StorageBlobLogs 
+| where TimeGenerated >ago(30d)
+|  where AuthenticationType == 'SAS'

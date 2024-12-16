@@ -1,0 +1,26 @@
+// This query looks for Blocked Connection check after urlclick. would be a good hunt for emails defender for office miss. Analyst can purge berfore user click from device doesnt have zscaler agent.
+let searchTimeRange = 14d;
+union
+( CommonSecurityLog
+| where DeviceVendor == 'Zscaler'
+| where Activity !in ('Blocked due to Server Probe Failure','Access denied due to bad server certificate','Country block outbound request: not allowed to access sites in this country','Dropped due to failed client SSL handshake','Not allowed to browse this category','Not allowed to access this file type','Not allowed the use of this IT Services site','Web application is blocked by Firewall rule')
+| where SimplifiedDeviceAction == "Blocked"
+| project Timestamp = TimeGenerated, AccountUpn = tolower(SourceUserName), DestinationHostName,DestinationIP, Activity,DeviceAction,RequestURL,RequestClientApplication
+)
+,(
+UrlClickEvents
+| project TimeGenerated, Timestamp,Type,AccountUpn=tolower( AccountUpn), IPAddress,Url
+)
+| where ingestion_time() >= ago(searchTimeRange)
+| partition hint.strategy=native by AccountUpn
+    (
+    sort by Timestamp asc
+    | scan with_match_id=id  declare(ClickTime:datetime, BrowseTime:datetime,Url:string,ClickIP:string) with
+    (
+        step UrlClick output=none: Type=="UrlClickEvents" => ClickTime = Timestamp ;
+        step Login : Type=="CommonSecurityLog"  and  Timestamp- UrlClick.ClickTime between (5s .. 600s ) 
+                        => BrowseTime= Timestamp, ClickTime=UrlClick.ClickTime, Url=UrlClick.Url,ClickIP=UrlClick.IPAddress ;
+    )
+    | project BrowseTime, AccountUpn, ClickTime,EventGroupNumber=id,Url,ClickIP, DestinationHostName,DestinationIP, Activity,DeviceAction,RequestURL,RequestClientApplication
+    | sort by BrowseTime,AccountUpn,EventGroupNumber desc  // EventGroupNumber means how many grouped series events the user has
+    )

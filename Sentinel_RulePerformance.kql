@@ -1,0 +1,22 @@
+// This query to check perform. tune those has FP and Benign-TP
+let timerange= ago(30d);
+let AlertDetails = SecurityAlert
+| where TimeGenerated > timerange
+| summarize arg_max(TimeGenerated,*) by SystemAlertId
+| extend RuleName = parse_json(ExtendedProperties).["Analytic Rule Name"]
+| where isnotempty( RuleName)
+;
+SecurityIncident
+| where TimeGenerated > timerange
+| summarize arg_max( TimeGenerated,*) by IncidentName
+| where Severity != 'Informational'
+| where Status == 'Closed'
+| project TimeGenerated, IncidentName, Classification, ClassificationReason, SystemAlertId=AlertIds, Severity, Owner
+| where isnotempty(Owner.assignedTo) 
+| mv-expand SystemAlertId to typeof(string)
+| join kind=inner AlertDetails on  SystemAlertId
+| summarize Count=count() by Classification, ClassificationReason, tostring(RuleName)
+| extend ClassificationReason = iif( Classification == 'Undetermined', 'Undetermined',ClassificationReason)
+| project-away Classification
+| evaluate pivot(ClassificationReason,sum(Count))
+| render columnchart with (kind=unstacked )

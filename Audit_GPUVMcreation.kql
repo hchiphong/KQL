@@ -1,0 +1,8 @@
+// GPU VM (N-series VM) creation would be rare and maybe sight of crypto mining
+AzureActivity
+| where TimeGenerated >ago(30d)
+| where OperationNameValue == 'MICROSOFT.COMPUTE/VIRTUALMACHINES/WRITE'
+| where ActivitySubstatusValue == 'Created'
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=tostring(parse_json(Properties).responseBody),  Level,ActivityStatusValue,ResourceProviderValue, Authorization,Claims,Properties, _ResourceId
+| extend vmSize = parse_json(RespondBody).properties.hardwareProfile.vmSize
+| where vmSize contains "_N"

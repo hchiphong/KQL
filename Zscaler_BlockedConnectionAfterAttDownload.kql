@@ -1,0 +1,33 @@
+// This query looks for blocked Zscaler connection check after ATTDownload.
+let searchTimeRange = 14d;
+union
+( CommonSecurityLog
+| where DeviceVendor == 'Zscaler'
+| where Activity !in ('Blocked due to Server Probe Failure','Access denied due to bad server certificate','Country block outbound request: not allowed to access sites in this country','Dropped due to failed client SSL handshake','Not allowed to browse this category','Not allowed to access this file type','Not allowed the use of this IT Services site','Web application is blocked by Firewall rule')
+| where SimplifiedDeviceAction == "Blocked"
+| project Timestamp = TimeGenerated, AccountUpn = tolower(SourceUserName), DestinationHostName,DestinationIP, Activity,DeviceAction,RequestURL,RequestClientApplication,Type
+)
+,(
+CloudAppEvents
+| where ActionType == 'FileDownloadedFromBrowser'
+| extend AccountUpn = tolower(RawEventData.UserId)
+        ,FileName = tostring(RawEventData.ObjectId)
+        ,Device = tostring(RawEventData.DeviceName)
+        ,DownloadFromApp = tostring(RawEventData.Application)
+        ,ClientIP = tostring(RawEventData.ClientIP)
+| project Timestamp=TimeGenerated, AccountUpn,FileName,Device,DownloadFromApp,ClientIP,Type
+| where DownloadFromApp != 'System'
+)
+| where ingestion_time() >= ago(searchTimeRange)
+| partition hint.strategy=native by AccountUpn
+    (
+    sort by Timestamp asc
+    | scan with_match_id=id  declare(DownloadTime:datetime, BrowseTime:datetime,Url:string,DownloadClientIP:string,FilePath:string,DeviceName:string,FromApp:string) with
+    (
+        step ATTDownload output=none: Type=="CloudAppEvents" => DownloadTime = Timestamp ;
+        step Login : Type=="CommonSecurityLog"  and  Timestamp- ATTDownload.DownloadTime between (5s .. 600s ) 
+                        => BrowseTime= Timestamp, DownloadTime=ATTDownload.DownloadTime, Url=ATTDownload.Url,DownloadClientIP=ATTDownload.ClientIP,FilePath=ATTDownload.FileName,DeviceName=ATTDownload.Device,FromApp=ATTDownload.DownloadFromApp;
+    )
+    | project BrowseTime, AccountUpn, DownloadTime ,FilePath,DeviceName,FromApp,ClientIP,EventGroupNumber=id,Url, DestinationHostName,DestinationIP, Activity,DeviceAction,RequestURL,RequestClientApplication
+    | sort by BrowseTime,AccountUpn,EventGroupNumber desc  // EventGroupNumber means how many grouped series events the user has
+)

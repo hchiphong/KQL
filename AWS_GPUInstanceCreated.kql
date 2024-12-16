@@ -1,0 +1,6 @@
+// Audit GPU instance create, potential crypto mining.
+AWSCloudTrail
+| where TimeGenerated >ago(30d)
+| where EventName == 'RunInstances'
+| extend InstanceType = tostring(parse_json(RequestParameters).instanceType)
+| where InstanceType startswith "p" or InstanceType startswith "g" or InstanceType startswith "f"

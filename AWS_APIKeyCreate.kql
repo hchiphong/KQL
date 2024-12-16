@@ -1,0 +1,4 @@
+// New API Key Created. with the API key actor can access behalf of Requestparameters.userName, what key created? check ResponseElements.accessKey.accessKeyId. This ID is use for investigate other damage cause by it.
+AWSCloudTrail
+| where TimeGenerated >ago(30d)
+| where EventName == 'CreateAccessKey'

@@ -1,0 +1,5 @@
+// Audit S3 download. in order to see the log, need s3 log enabled which is not enable by default. 
+//GetObject is Download the object in bucket. 
+AWSCloudTrail
+| where TimeGenerated >ago(30d)
+| where EventName == "GetObject" 

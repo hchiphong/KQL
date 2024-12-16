@@ -1,0 +1,4 @@
+// Query Audit S3 Presigned url usage
+AWSCloudTrail
+| where EventSource == "s3.amazonaws.com"
+| where parsejson(RequestParameters)["Amz-Algorithm"] =~ "AWS4-HMAC-SHA256"

@@ -1,0 +1,10 @@
+// Query look for change in Tenant Info
+AuditLogs
+| where TimeGenerated >ago(30d)
+| where OperationName contains "Set Company Information"
+| project TimeGenerated, InitiatedBy, TargetResources
+| mv-expand TargetResources
+| evaluate bag_unpack(TargetResources)
+| mv-expand modifiedProperties
+| project-rename OrgName = displayName
+| evaluate bag_unpack(modifiedProperties)

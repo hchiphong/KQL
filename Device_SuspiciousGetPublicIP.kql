@@ -1,0 +1,25 @@
+// This query looks for public IP check after urlclick. Some phishing attempt to gather user's public IP when user submit credentials.
+let searchTimeRange = 14d;
+union
+( DeviceNetworkEvents
+| where RemoteUrl has_any ('checkip.amazonaws.com','ipinfo.io')
+| where isnotempty( InitiatingProcessAccountUpn)
+| project Timestamp, DeviceName, AccountUpn=tolower(InitiatingProcessAccountUpn)
+)
+,(
+UrlClickEvents
+| project TimeGenerated, Timestamp,Type,AccountUpn=tolower( AccountUpn), IPAddress,Url
+)
+| where ingestion_time() >= ago(searchTimeRange)
+| partition hint.strategy=native by AccountUpn
+    (
+    sort by Timestamp asc
+    | scan with_match_id=id  declare(ClickTime:datetime, BrowseTime:datetime,Url:string,ClickIP:string) with
+    (
+        step UrlClick output=none: Type=="UrlClickEvents" => ClickTime = Timestamp ;
+        step Login : Type=="DeviceNetworkEvents"  and  Timestamp- UrlClick.ClickTime between (5s .. 300s ) 
+                        => BrowseTime= Timestamp, ClickTime=UrlClick.ClickTime, Url=UrlClick.Url,ClickIP=UrlClick.IPAddress ;
+    )
+    | project BrowseTime, AccountUpn, ClickTime,DeviceName,EventGroupNumber=id,Url,ClickIP
+    | sort by BrowseTime,AccountUpn,EventGroupNumber desc  // EventGroupNumber means how many grouped series events the user has
+)
