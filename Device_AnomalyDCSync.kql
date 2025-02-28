@@ -1,0 +1,29 @@
+// Query Hunt for Anomaly DCSync. Would be suspicious when SourceDeviceRole is not DC.
+let Devices=
+ExposureGraphNodes
+| where NodeLabel == 'device'
+| where isnotempty( NodeName)
+;
+IdentityDirectoryEvents
+| where ActionType == 'Directory Services replication'
+| make-series Syncs=count()  default =0 on Timestamp  from ago(30d) to now() step 1d   by DeviceName,DestinationDeviceName
+| extend (anomalies, score, baseline) = series_decompose_anomalies(Syncs, 7 , -1, 'linefit')
+| mv-expand  Timestamp to typeof(datetime )
+            , Syncs to typeof(double)
+            , anomalies to typeof(double)
+            , score to typeof(double)
+            , baseline to typeof(double)
+| where anomalies == 1
+| where isnotempty( DeviceName)
+| join kind=leftouter  ( Devices
+| extend SourceDeviceRole = tostring(NodeProperties.rawData.deviceRole),
+        SourceProperties=NodeProperties
+| project SourceDeviceName=NodeName, SourceDeviceRole, SourceProperties
+)
+on $left.DeviceName == $right.SourceDeviceName
+| join kind=leftouter  ( Devices
+| extend DestinationDeviceRole = tostring(NodeProperties.rawData.deviceRole),
+        DestinationProperties=NodeProperties
+| project DestinationDeviceName=NodeName, DestinationDeviceRole, DestinationProperties
+)
+on DestinationDeviceName

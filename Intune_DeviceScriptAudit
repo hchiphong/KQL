@@ -1,0 +1,8 @@
+// Intune Audit Table only available when log are enabled in Intune portal. Drawback: it doesnt say which script is create and assigned as well as IPAddress
+IntuneAuditLogs
+| where OperationName has 'DeviceManagementScript'
+
+// More Detail
+// For forensics
+// C:\Program files (x86)\Microsoft Intune Management Extension\Policies\Scripts
+// C:\Program files (x86)\Microsoft Intune Management Extension\Policies\Results

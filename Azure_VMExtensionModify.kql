@@ -1,0 +1,10 @@
+// KQL audit extension of Azure VM got modified. ActivitySubstatusValue == "OK" mean modified. 
+let VMExtensionActivity = dynamic(["MICROSOFT.COMPUTE/VIRTUALMACHINES/EXTENSIONS/DELETE","MICROSOFT.COMPUTE/VIRTUALMACHINES/EXTENSIONS/WRITE"]);
+AzureActivity
+| where TimeGenerated >ago(300d)
+| where OperationNameValue in ( VMExtensionActivity )
+| project EventSubmissionTimestamp, Caller, CallerIpAddress, OperationNameValue,CorrelationId, RequestBody=parse_json(Properties).requestbody, RespondBody=parse_json(Properties).responseBody,  Level,ActivityStatusValue, ActivitySubstatusValue, ResourceProviderValue, Authorization,Claims,Properties, _ResourceId
+| extend ExtensionName = parse_json(Properties).resource
+
+
+// https://www.netspi.com/blog/technical-blog/cloud-penetration-testing/attacking-azure-with-custom-script-extensions/
