@@ -1,4 +1,5 @@
 // Query Hunt for Anomaly DCSync. Would be suspicious when SourceDeviceRole is not DC.
+// Option 1: combine MDI log and Exposure log
 let Devices=
 ExposureGraphNodes
 | where NodeLabel == 'device'
@@ -15,6 +16,7 @@ IdentityDirectoryEvents
             , baseline to typeof(double)
 | where anomalies == 1
 | where isnotempty( DeviceName)
+| where Timestamp >ago(1d) // Filter recent anomaly, doesnt affect lookup time
 | join kind=leftouter  ( Devices
 | extend SourceDeviceRole = tostring(NodeProperties.rawData.deviceRole),
         SourceProperties=NodeProperties
@@ -29,3 +31,34 @@ on $left.DeviceName == $right.SourceDeviceName
 on DestinationDeviceName
 // Filter if source device is workstation
 | where SourceProperties.rawData.deviceType == 'Workstation'
+
+// Option2: Leverage DeviceInfo  IdentityDirectoryEvents
+let Devices=
+DeviceInfo
+| summarize arg_max(Timestamp,*) by DeviceName
+| project-away TimeGenerated,Timestamp
+| extend NodeProperties=pack_all()
+| project NodeName=DeviceName,NodeProperties
+;
+IdentityDirectoryEvents
+| where ActionType == 'Directory Services replication'
+| make-series Syncs=count()  default =0 on Timestamp  from ago(30d) to now() step 1d   by DeviceName,DestinationDeviceName
+| extend (anomalies, score, baseline) = series_decompose_anomalies(Syncs, 7 , -1, 'linefit')
+| mv-expand  Timestamp to typeof(datetime )
+            , Syncs to typeof(double)
+            , anomalies to typeof(double)
+            , score to typeof(double)
+            , baseline to typeof(double)
+| where anomalies == 1
+| where isnotempty( DeviceName)
+| where Timestamp >ago(1d) // Filter recent anomaly, doesnt affect lookup time
+| join kind=leftouter  ( Devices
+| project SourceDeviceName=NodeName, SourceProperties=NodeProperties
+)
+on $left.DeviceName == $right.SourceDeviceName
+| join kind=leftouter  ( Devices
+| project DestinationDeviceName=NodeName, DestinationProperties=NodeProperties
+)
+on DestinationDeviceName
+// Filter if source device is workstation
+| where SourceProperties.DeviceType == 'Workstation'
