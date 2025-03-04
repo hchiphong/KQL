@@ -1,4 +1,4 @@
-// Query Hunt for Anomaly DCSync. Would be suspicious when SourceDeviceRole is not DC.
+// Query Hunt for Anomaly DCSync. Would be suspicious when SourceDeviceRole is not DC. Using anomaly we can detect both malicious server and workstation.
 // Option 1: combine MDI log and Exposure log
 let Devices=
 ExposureGraphNodes
@@ -61,4 +61,26 @@ on $left.DeviceName == $right.SourceDeviceName
 )
 on DestinationDeviceName
 // Filter if source device is workstation
+// | where SourceProperties.DeviceType == 'Workstation'
+
+// Option 3: Look for all sync from workstation
+let Devices=
+DeviceInfo
+| summarize arg_max(Timestamp,*) by DeviceName
+| project-away TimeGenerated,Timestamp
+| extend NodeProperties=pack_all()
+| project NodeName=DeviceName,NodeProperties
+;
+IdentityDirectoryEvents
+| where Timestamp >ago(30d)
+| where ActionType == 'Directory Services replication'
+| where isnotempty( DeviceName)
+| join kind=leftouter  ( Devices
+| project SourceDeviceName=NodeName, SourceProperties=NodeProperties
+)
+on $left.DeviceName == $right.SourceDeviceName
+| join kind=leftouter  ( Devices
+| project DestinationDeviceName=NodeName, DestinationProperties=NodeProperties
+)
+on DestinationDeviceName
 | where SourceProperties.DeviceType == 'Workstation'
