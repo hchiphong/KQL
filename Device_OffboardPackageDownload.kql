@@ -1,0 +1,5 @@
+// Description: This query will return the download offboarding package events from Microsoft 365 Defender.
+// Type: KQL 
+CloudAppEvents
+| where Application == 'Microsoft 365'
+| where ActionType == 'DownloadOffboardingPkg'

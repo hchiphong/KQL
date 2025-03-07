@@ -1,0 +1,17 @@
+// Description: This query will return all remediation actions that have been performed in the Microsoft Defender for Identity portal.
+CloudAppEvents
+| where Application == 'Microsoft 365'
+| where ActionType == 'RemediationActionAdded'
+| extend ResultDescription=RawEventData.ResultDescription
+| parse kind=relaxed  tostring(ResultDescription) with 
+    * "[ActionId=" ActionId:guid 
+    "ActionType=" ActionType:string 
+    "AccountObjectGuid=" AffectedAccountObjectGuid:string 
+    "AccountAadUserId=" AffectedAccountAadUserId:string 
+    "AccountName=" AffectedAccountName:string 
+    "AccountSid=" AffectedAccountSid:string 
+    "AccountDnsDomain=" AffectedAccountDnsDomain:string 
+    "ActionSource=" ActionSource:string
+    "MachineId=" MachineId:string
+    "initiatedByAccountDetails=[" initiatedByAccountDetails"]" *
+    | project-away ResultDescription
