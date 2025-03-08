@@ -1,0 +1,20 @@
+// Description: Identify the Defender Bypass Change events from Microsoft 365 Defender. Following actions could potentially impair the detection capabilities of the Defender. Investigate the reason for these activities.
+CloudAppEvents
+| where ActionType in (
+    // MDE Indicator Setting
+    "DeleteIndicator", "EditIndicator", "AddIndicator", 
+    // MDE General Setting
+    "ChangeDataRetention", "SetAdvancedFeatures", "DownloadOffboardingPkg",
+    // MDE Activities
+    "RemoveAppRestrictions","ReleaseFromIsolation","DeviceOffBoarding","RunLiveResponseSession","RunLiveResponseApi",
+    // MDE Role Management
+    "Added role","Edited role","Deleted role","EditCustomDetection",
+    // XDR Detection Rule
+    "EditCustomDetection","CreateCustomDetection","DeleteCustomDetection","ChangeCustomDetectionRuleStatus",
+    // XDR Suppression Rule
+    "CreateSuppressionRule","EditSuppressionRule","EnableSuppressionRule",
+    // MDI Activities
+    "ExclusionConfigurationAdded","ExclusionConfigurationUpdated","TaggingConfigurationUpdated","WorkspaceAlertThresholdLevelUpdated","RemediationActionUpdated","SensorConfigurationUpdated","SensorDeleted","SensorActivationMethodConfigurationUpdated","DirectoryServicesAccountConfigurationUpdated","RemediationActionConfigurationUpdated","EntityRemediatorConfigurationUpdated","SyslogServiceConfigurationUpdated","VpnConfigurationUpdated","URbacAuthorizationStatusChanged"
+    )
+| project RawEventData
+| evaluate bag_unpack(RawEventData)

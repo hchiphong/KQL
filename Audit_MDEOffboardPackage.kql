@@ -2,4 +2,4 @@
 // Type: KQL 
 CloudAppEvents
 | where Application == 'Microsoft 365'
-| where ActionType == 'DownloadOffboardingPkg'
+| where ActionType in('DownloadOffboardingPkg','DeviceOffBoarding')

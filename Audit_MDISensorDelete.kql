@@ -1,0 +1,4 @@
+// Description: Identify when a MDI sensor is deleted.
+CloudAppEvents
+| where ActionType == 'SensorDeleted'
+| project CreationTime=RawEventData.CreationTime, AccountDisplayName,ActionType,CorrelationId=RawEventData.CorrelationId,ResultDescription=RawEventData.ResultDescription

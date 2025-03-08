@@ -1,0 +1,11 @@
+// Description: Identify public IP addresses in the subscription
+// Type: KQL
+// Azure Resource Graph
+Resources
+| where type =~ 'microsoft.network/publicipaddresses'
+| project id, name, location, properties.ipAddress, properties.publicIPAllocationMethod
+
+// Microsoft Sentinel
+arg("").Resources
+| where type =~ 'microsoft.network/publicipaddresses'
+| project id, name, location, properties.ipAddress, properties.publicIPAllocationMethod

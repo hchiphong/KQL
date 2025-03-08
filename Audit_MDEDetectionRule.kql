@@ -1,0 +1,5 @@
+// Description: Identify the custom detection rules created, deleted in MDE. Can be limit to 'DeleteCustomDetection' to only identify the deleted rules for impair detection.
+CloudAppEvents
+| where ActionType in  ('CreateCustomDetection','DeleteCustomDetection','RunCustomDetection','ChangeCustomDetectionRuleStatus','EditCustomDetection')
+| extend RuleName=RawEventData.RuleName,
+    RuleQuery= RawEventData.Query

@@ -1,0 +1,9 @@
+// Description: Query to look for removed Tenant Allow/Block List Items. In most of the case it only give out Item ID, so you may need to look for the details in the portal.
+// https://o365reports.com/2022/09/27/exchange-online-tenant-allow-and-block-list-management/ 
+CloudAppEvents
+| where ActionType in("New-TenantAllowBlockListItems",
+"New-TenantAllowBlockListSpoofItems",
+"Remove-TenantAllowBlockListItems",
+"Set-TenantAllowBlockListItems",
+"TenantAllowBlockListItemExpiry",
+"TenantAllowBlockListItemRemoved")

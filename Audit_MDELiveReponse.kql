@@ -1,0 +1,5 @@
+// Description: This query will return all the MDE Live Response sessions and commands that have been run. If command is getfile it also return file metadata.
+CloudAppEvents
+| where ActionType == 'RunLiveResponseSession'
+| project RawEventData
+| evaluate bag_unpack(RawEventData)

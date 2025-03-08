@@ -1,0 +1,6 @@
+
+// Description: List of all MDE Suppression Rule changes
+CloudAppEvents
+| where ActionType in('EditSuppressionRule','CreateSuppressionRule','DeleteSuppressionRule')
+| project RawEventData
+| evaluate bag_unpack(RawEventData)

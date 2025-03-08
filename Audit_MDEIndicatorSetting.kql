@@ -1,0 +1,7 @@
+// Description: Identify the MDE Indicators that have been added, edited, or deleted.
+CloudAppEvents
+| where ActionType in ("DeleteIndicator","EditIndicator","AddIndicator")
+| project RawEventData
+| evaluate bag_unpack(RawEventData)
+// Filter for Allowed Indicator. If this perform by compromised account, this would be a concern.
+// | where IndicatorAction == 'Allowed'

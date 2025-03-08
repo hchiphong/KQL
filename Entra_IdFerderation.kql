@@ -1,0 +1,8 @@
+// https://www.crowdstrike.com/en-us/blog/compromising-identity-provider-federation/ (Crowdstrike)
+// https://research.splunk.com/cloud/30c47f45-dd6a-4720-9963-0bca6c8686ef/  (Splunk)   
+// https://www.inversecos.com/2021/11/how-to-detect-azure-active-directory.html (Inversecos)
+
+
+CloudAppEvents
+| where TimeGenerated >ago(300d)
+| where ActionType == 'Add unverified domain.'

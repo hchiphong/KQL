@@ -1,5 +1,4 @@
 // Description: This query will help you to get the details of the exclusion configuration added in the MDI alert entities including global exclusion or specific alert.
 CloudAppEvents
-| where TimeGenerated >ago(1d)
 | where ActionType == 'ExclusionConfigurationAdded'
 | project CreationTime=RawEventData.CreationTime, AccountDisplayName,ActionType,CorrelationId=RawEventData.CorrelationId,ResultDescription=RawEventData.ResultDescription

@@ -1,0 +1,26 @@
+// Description: Query to get the isolation and release events for devices.
+// Required table: CloudAppEvents
+CloudAppEvents
+| where TimeGenerated >ago(30d)
+| where ActionType in('ReleaseFromIsolation','IsolateDevice')
+| project CreationTime=todatetime(RawEventData.CreationTime),
+            ActionType,
+            ActionScope=RawEventData.ActionScope,
+            DeviceGroup=RawEventData.DeviceGroup,
+            DeviceId=tostring(RawEventData.DeviceId),
+            DeviceName=RawEventData.DeviceName,
+            ActionComment=RawEventData.ActionComment,
+            AccountDisplayName,
+            ActivityObjects
+| partition by DeviceId
+(
+    sort by CreationTime asc 
+    | scan with_match_id=id declare (IsolateTime:datetime ,IsolateActorObjects:dynamic , IsolateComment:dynamic ) with (
+        step Isolate output=none: ActionType=='IsolateDevice';
+        step Release : ActionType=='ReleaseFromIsolation'
+            =>  IsolateTime=Isolate.CreationTime,IsolateActorObjects=Isolate.ActivityObjects,IsolateComment=Isolate.ActionComment;
+    )
+    |project IsolateTime,ReleaseTime=CreationTime,IsolateActorObjects,IsolateComment,ReleaseActorObjects=ActivityObjects,ReleaseComment=ActionComment,DeviceName,DeviceId,DeviceGroup
+)
+// Filter short isolation time. Would be interesting to see if the isolation time is too short.
+// | where ReleaseTime - IsolateTime between ( 0m .. 30m )

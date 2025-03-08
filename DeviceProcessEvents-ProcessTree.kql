@@ -1,100 +1,102 @@
 // Process Tree, due to Sentinel doesnt have UniqueProcessId, we have to calculate. This support linux and windows
-let ProcessTree = (MachineName:string, cmd:string, when:timespan  =30d ){
-let DeviceProcessLogs= materialize (
-DeviceProcessEvents
-| where Timestamp >ago(when) // Adjust Time for more visibility
-| where DeviceName == MachineName
-| extend ProcessUniqueId = hash_many(DeviceId, ProcessId, ProcessCreationTime), InitiatingProcessUniqueId = hash_many(DeviceId, InitiatingProcessId, InitiatingProcessCreationTime)
-);
-DeviceProcessLogs
-| make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
-| graph-match (Child) -[ChildCommand*1 .. 10]-> (Current) -[Command*1 .. 10]-> (Parent) 
-    where Current.ProcessCommandLine has cmd 
-    project Parent.FileName, Parent.ProcessId, Parent.ProcessCreationTime, Parent.ProcessCommandLine,
-            Current.FileName, Current.ProcessCreationTime, Current.ProcessId, Current.ProcessUniqueId, Current.ProcessCommandLine, 
-            Command.FileName, Command.ProcessId, Command.ProcessCreationTime, Command.ProcessCommandLine, 
-            ChildCommand.ProcessCommandLine, ChildCommand.ProcessCreationTime,
-            Child.ProcessCreationTime, Child.ProcessCommandLine
-| extend
-    EnrichCommandProc= zip(Command_ProcessCreationTime, Command_ProcessCommandLine),
-    EnrichChildCommandProc = zip(ChildCommand_ProcessCreationTime, ChildCommand_ProcessCommandLine)
-| extend TreeCommand = array_concat(EnrichChildCommandProc, EnrichCommandProc)
-| extend Nodes=array_length( TreeCommand) 
-| summarize TreeNodes=arg_max(Nodes, *) by Current_ProcessUniqueId // longest tree of the process may lose some smaller node
-| project TreeNodes,TreeCommand, Current_ProcessUniqueId, Current_ProcessCreationTime
+let ProcessTree = (MachineName: string, cmd: string, when: timespan  =30d) {
+    let DeviceProcessLogs= materialize (
+        DeviceProcessEvents
+        | where Timestamp > ago(when) // Adjust Time for more visibility
+        | where DeviceName == MachineName
+        | extend
+            ProcessUniqueId = hash_many(DeviceId, ProcessId, ProcessCreationTime),
+            InitiatingProcessUniqueId = hash_many(DeviceId, InitiatingProcessId, InitiatingProcessCreationTime)
+        );
+    DeviceProcessLogs
+    | make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
+    | graph-match (Child) -[ChildCommand*1 .. 10]-> (Current) -[Command*1 .. 10]-> (Parent) 
+        where Current.ProcessCommandLine has cmd 
+        project Parent.FileName, Parent.ProcessId, Parent.ProcessCreationTime, Parent.ProcessCommandLine,
+        Current.FileName, Current.ProcessCreationTime, Current.ProcessId, Current.ProcessUniqueId, Current.ProcessCommandLine, 
+        Command.FileName, Command.ProcessId, Command.ProcessCreationTime, Command.ProcessCommandLine, 
+        ChildCommand.ProcessCommandLine, ChildCommand.ProcessCreationTime,
+        Child.ProcessCreationTime, Child.ProcessCommandLine
+    | extend
+        EnrichCommandProc= zip(Command_ProcessCreationTime, Command_ProcessCommandLine),
+        EnrichChildCommandProc = zip(ChildCommand_ProcessCreationTime, ChildCommand_ProcessCommandLine)
+    | extend TreeCommand = array_concat(EnrichChildCommandProc, EnrichCommandProc)
+    | extend Nodes=array_length(TreeCommand) 
+    | summarize TreeNodes=arg_max(Nodes, *) by Current_ProcessUniqueId // longest tree of the process may lose some smaller node
+    | project TreeNodes, TreeCommand, Current_ProcessUniqueId, Current_ProcessCreationTime
 };
 ProcessTree('DeviceName', 'command', 7d)
 
 // ProcessTree base on MDE UniqueProcessID. only windows device
-let ProcessTree = (MachineName:string, cmd:string, when:timespan  =30d ){
-let DeviceProcessLogs= materialize (
-    DeviceProcessEvents
-    | where Timestamp >ago(when) // Adjust Time for more visibility
-    | where DeviceName == MachineName
-    | where ProcessUniqueId !=0 and InitiatingProcessUniqueId !=0 // ignore 0 id
-)
-;
-DeviceProcessLogs
-| make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
-| graph-match (Child) -[ChildCommand*1 .. 10]-> (Current) -[Command*1 .. 10]-> (Parent) 
-    where Current.ProcessCommandLine has cmd 
-    project Parent.FileName, Parent.ProcessId, Parent.ProcessCreationTime, Parent.ProcessCommandLine,
-            Current.FileName, Current.ProcessCreationTime, Current.ProcessId, Current.ProcessUniqueId, Current.ProcessCommandLine, 
-            Command.FileName, Command.ProcessId, Command.ProcessCreationTime, Command.ProcessCommandLine, 
-            ChildCommand.ProcessCommandLine, ChildCommand.ProcessCreationTime,
-            Child.ProcessCreationTime, Child.ProcessCommandLine
-| extend
-    EnrichCommandProc= zip(Command_ProcessCreationTime, Command_ProcessCommandLine),
-    EnrichChildCommandProc = zip(ChildCommand_ProcessCreationTime, ChildCommand_ProcessCommandLine)
-| extend TreeCommand = array_concat(EnrichChildCommandProc, EnrichCommandProc)
-| extend Nodes=array_length( TreeCommand)
-| summarize TreeNodes=arg_max(Nodes, *) by Current_ProcessUniqueId // longest tree of the process may lose some smaller node
-| project TreeNodes,TreeCommand, Current_ProcessUniqueId, Current_ProcessCreationTime
+let ProcessTree = (MachineName: string, cmd: string, when: timespan  =30d) {
+    let DeviceProcessLogs= materialize (
+        DeviceProcessEvents
+        | where Timestamp > ago(when) // Adjust Time for more visibility
+        | where DeviceName == MachineName
+        | where ProcessUniqueId != 0 and InitiatingProcessUniqueId != 0 // ignore 0 id
+        )
+    ;
+    DeviceProcessLogs
+    | make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
+    | graph-match (Child) -[ChildCommand*1 .. 10]-> (Current) -[Command*1 .. 10]-> (Parent) 
+        where Current.ProcessCommandLine has cmd 
+        project Parent.FileName, Parent.ProcessId, Parent.ProcessCreationTime, Parent.ProcessCommandLine,
+        Current.FileName, Current.ProcessCreationTime, Current.ProcessId, Current.ProcessUniqueId, Current.ProcessCommandLine, 
+        Command.FileName, Command.ProcessId, Command.ProcessCreationTime, Command.ProcessCommandLine, 
+        ChildCommand.ProcessCommandLine, ChildCommand.ProcessCreationTime,
+        Child.ProcessCreationTime, Child.ProcessCommandLine
+    | extend
+        EnrichCommandProc= zip(Command_ProcessCreationTime, Command_ProcessCommandLine),
+        EnrichChildCommandProc = zip(ChildCommand_ProcessCreationTime, ChildCommand_ProcessCommandLine)
+    | extend TreeCommand = array_concat(EnrichChildCommandProc, EnrichCommandProc)
+    | extend Nodes=array_length(TreeCommand)
+    | summarize TreeNodes=arg_max(Nodes, *) by Current_ProcessUniqueId // longest tree of the process may lose some smaller node
+    | project TreeNodes, TreeCommand, Current_ProcessUniqueId, Current_ProcessCreationTime
 };
 ProcessTree('DeviceName', 'command', 7d)
 
-
 // MDE rare processtree using Unique id, windows only
-let AnomalyProcessTree = (MachineName:string,when:timespan  =30d ){
-let DeviceProcessLogs= materialize (
-    DeviceProcessEvents
-    | where Timestamp >ago(when) // Adjust Time for more visibility
-    | where DeviceName == MachineName // can remove but would crash KQL query sometimes due to lack of compute resouce
-    | where ProcessUniqueId !=0 and InitiatingProcessUniqueId !=0 // ignore 0 id
-    )
-;
-DeviceProcessLogs
-| make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
-| graph-match (Child) -[Command*1 .. 5]-> (Parent) 
-    project Parent.ProcessUniqueId,Command.FileName
-| extend TreeProcess = Command_FileName
-| summarize TreeNodes=arg_max(array_length(TreeProcess), *) by Parent_ProcessUniqueId // Remove this for including smaller tree which may cost query resource
-| where TreeNodes >2
-| summarize count() by  tostring(TreeProcess)
-| where count_ <10
-| limit 100
+let AnomalyProcessTree = (MachineName: string, when: timespan  =30d) {
+    let DeviceProcessLogs= materialize (
+        DeviceProcessEvents
+        | where Timestamp > ago(when) // Adjust Time for more visibility
+        | where DeviceName == MachineName // can remove but would crash KQL query sometimes due to lack of compute resouce
+        | where ProcessUniqueId != 0 and InitiatingProcessUniqueId != 0 // ignore 0 id
+        )
+    ;
+    DeviceProcessLogs
+    | make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
+    | graph-match (Child) -[Command*1 .. 5]-> (Parent) 
+        project Parent.ProcessUniqueId, Command.FileName
+    | extend TreeProcess = Command_FileName
+    | summarize TreeNodes=arg_max(array_length(TreeProcess), *) by Parent_ProcessUniqueId // Remove this for including smaller tree which may cost query resource
+    | where TreeNodes > 2
+    | summarize count() by tostring(TreeProcess)
+    | where count_ < 10
+    | limit 100
 };
 AnomalyProcessTree('DeviceName', 7d)
 // To be Dev for anomaly
 
-
 // rare process tree linux + windows
-let AnomalyProcessTree = (MachineName:string,when:timespan  =30d ){
-let DeviceProcessLogs= materialize (
-DeviceProcessEvents
-| where Timestamp >ago(7d) // Adjust Time for more visibility
-| extend ProcessUniqueId = hash_many(DeviceId, ProcessId, ProcessCreationTime), InitiatingProcessUniqueId = hash_many(DeviceId, InitiatingProcessId, InitiatingProcessCreationTime)
-);
-DeviceProcessLogs
-| make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
-| graph-match (Child) -[Command*1 .. 5]-> (Parent) 
-    project Parent.ProcessUniqueId,Command.FileName
-| extend TreeProcess = Command_FileName
-| summarize TreeNodes=arg_max(array_length(TreeProcess), *) by Parent_ProcessUniqueId // Remove this for including smaller tree which may cost query resource
-| where TreeNodes >2
-| summarize count() by  tostring(TreeProcess)
-| where count_ <10
-| limit 100
+let AnomalyProcessTree = (MachineName: string, when: timespan  =30d) {
+    let DeviceProcessLogs= materialize (
+        DeviceProcessEvents
+        | where Timestamp > ago(7d) // Adjust Time for more visibility
+        | extend
+            ProcessUniqueId = hash_many(DeviceId, ProcessId, ProcessCreationTime),
+            InitiatingProcessUniqueId = hash_many(DeviceId, InitiatingProcessId, InitiatingProcessCreationTime)
+        );
+    DeviceProcessLogs
+    | make-graph ProcessUniqueId -->  InitiatingProcessUniqueId with DeviceProcessLogs on ProcessUniqueId 
+    | graph-match (Child) -[Command*1 .. 5]-> (Parent) 
+        project Parent.ProcessUniqueId, Command.FileName
+    | extend TreeProcess = Command_FileName
+    | summarize TreeNodes=arg_max(array_length(TreeProcess), *) by Parent_ProcessUniqueId // Remove this for including smaller tree which may cost query resource
+    | where TreeNodes > 2
+    | summarize count() by tostring(TreeProcess)
+    | where count_ < 10
+    | limit 100
 };
 AnomalyProcessTree('DeviceName', 7d)
 
